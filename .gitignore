@@ -1,0 +1,31 @@
+# 1. Dữ liệu Docker & Database (Tuyệt đối không commit lên Git)
+postgres_data/
+*.sqlite
+*.db
+
+# 2. Biến môi trường & Mật khẩu
+.env
+.env.local
+.env.*.local
+
+# 3. Dependencies & Thư mục Build (Tuỳ ngôn ngữ Backend)
+node_modules/
+dist/
+build/
+venv/
+.venv/
+__pycache__/
+target/
+*.class
+
+# 4. File cấu hình của IDE & Hệ điều hành
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 5. File Log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
