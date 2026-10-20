@@ -1,4 +1,4 @@
-# CourseHub Project Guidelines
+# DiagramIo Project Guidelines
 
 ## Tech Stack
 
