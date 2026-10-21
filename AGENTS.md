@@ -12,6 +12,30 @@
 - Use Maven as the default build and dependency-management tool unless the repository already establishes Gradle.
 - Package and run the service with Docker and Docker Compose. Keep local infrastructure configuration reproducible and do not commit secrets.
 
+## Architecture
+
+- Phase 1 is a baseline: prefer the simplest approach that works. Do not add complex logic, premature optimization, or extra abstractions.
+- Use three layers: API -> Business (domain) -> Data access (infrastructure). Dependencies point inward only.
+
+| Layer | Package | May use |
+|---|---|---|
+| API | `com.diagramio.api` | Spring Web: controllers, DTOs, `@RestControllerAdvice` that maps domain exceptions to HTTP status codes |
+| Business | `com.diagramio.domain` | Plain Java only: domain models, services, repository interfaces, domain exceptions |
+| Data access | `com.diagramio.infrastructure` | Spring Data JPA: `@Entity`, `JpaRepository`, classes implementing the domain repository interfaces, Entity <-> domain mappers |
+| Wiring | `com.diagramio.config` | Spring configuration: security, OpenAPI, `@Bean` definitions that create domain services |
+
+- The business layer must NOT import any web framework or database library (no Spring, `jakarta.persistence`, Hibernate, Servlet). No `@Service`, `@Transactional`, `@Entity`, or `ResponseEntity` in `domain`. Register domain services as beans in `config`.
+- The API layer calls domain services only, never `infrastructure` directly.
+- `ArchitectureTest` enforces these rules; keep it green.
+- Authentication is done once in a security filter (JWT or `X-Share-Token`), not repeated in each endpoint.
+
+## Database Migrations
+
+- Flyway migrations live in `src/main/resources/db/migration`, named `V<number>__<description>.sql` (two underscores).
+- Never edit a migration that has been merged to `main`; add a new migration instead (Flyway verifies checksums and fails on changed files).
+- Hibernate runs with `ddl-auto: validate`; the schema is owned by Flyway only.
+- Tables used by several members are defined in `V1`. Each member adds changes for their own tables in a new migration.
+
 ## Project Scope
 
 - Build the backend REST API for an online UML and ERD diagram service.

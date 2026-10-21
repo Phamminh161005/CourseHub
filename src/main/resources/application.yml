@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: diagramio
+  datasource:
+    # Mặc định khớp docker-compose.yml; ghi đè bằng biến môi trường SPRING_DATASOURCE_*
+    url: jdbc:postgresql://localhost:5432/diagram_app
+    username: root
+    password: secretpassword
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate # Schema do Flyway quản lý, Hibernate chỉ kiểm tra
+  flyway:
+    enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
