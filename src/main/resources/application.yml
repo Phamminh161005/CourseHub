@@ -16,3 +16,9 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+jwt:
+  secret: ${JWT_SECRET:dev-only-secret-please-change-it-32chars}
+  access-token-minutes: 15
+  refresh-token-days: 7
+
