@@ -1,18 +1,19 @@
 package com.diagramio.domain.diagram;
 
-import com.diagramio.domain.exception.DiagramNotFoundException;
-import com.diagramio.domain.exception.InvalidInputException;
-import com.diagramio.domain.exception.OptimisticLockConflictException;
-import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.diagramio.domain.exception.DiagramNotFoundException;
+import com.diagramio.domain.exception.InvalidInputException;
+import com.diagramio.domain.exception.OptimisticLockConflictException;
+import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
+
 /** Domain rules for diagram management. This class intentionally has no framework dependency. */
 public class DiagramService {
 
-    public static final String DEFAULT_DATA = "{\"nodes\": [], \"edges\": []}";
+    public static final String DEFAULT_DATA = "{\"nodes\":[], \"edges\":[]}";
     private static final int MAX_DATA_BYTES = 2 * 1024 * 1024;
     private static final String UML = "UML";
     private static final String ERD = "ERD";
@@ -142,6 +143,8 @@ public class DiagramService {
         return title == null || title.isBlank() ? null : title.trim();
     }
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
+
     private void validateJson(String data) {
         if (data == null || data.isBlank()) {
             throw new InvalidInputException("data must be valid JSON");
@@ -150,9 +153,9 @@ public class DiagramService {
             throw new InvalidInputException("data must not exceed 2 MB");
         }
         try {
-            new JsonValidator(data).validate();
-        } catch (IllegalArgumentException exception) {
-            throw new InvalidInputException("data must be valid JSON");
+             OBJECT_MAPPER.readTree(data);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+        throw new InvalidInputException("data must be valid JSON");
         }
     }
 
