@@ -1,0 +1,24 @@
+package com.diagramio.api.diagram.dto;
+
+import com.diagramio.domain.diagram.Diagram;
+import java.time.Instant;
+import java.util.UUID;
+
+public record DiagramResponse(
+        UUID id,
+        String title,
+        String diagramType,
+        String data,
+        Integer version,
+        boolean isPublic,
+        UUID ownerId,
+        UUID updatedBy,
+        Instant createdAt,
+        Instant updatedAt) {
+
+    public static DiagramResponse from(Diagram diagram) {
+        return new DiagramResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType(),
+                diagram.getData(), diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(),
+                diagram.getUpdatedBy(), diagram.getCreatedAt(), diagram.getUpdatedAt());
+    }
+}
