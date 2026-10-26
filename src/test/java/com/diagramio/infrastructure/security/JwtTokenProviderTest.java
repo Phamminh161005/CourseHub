@@ -16,7 +16,7 @@ class JwtTokenProviderTest {
 
     private static final String SECRET = "test-secret-that-is-at-least-32-bytes-long";
     private static final Instant NOW = Instant.parse("2026-10-26T10:00:00Z");
-    private static final User USER = new User(UUID.randomUUID(), "uet", "uet@gmail.com", "hash");
+    private static final User USER = new User(UUID.randomUUID(), "uet", "uet@gmail.com", "hash", NOW);
 
     private final JwtTokenProvider provider = providerAt(NOW, SECRET);
 

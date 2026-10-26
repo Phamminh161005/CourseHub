@@ -47,6 +47,7 @@ class RepositoryAdaptersTest {
                 .hasValueSatisfying(u -> {
                     assertThat(u.id()).isEqualTo(SAMPLE_USER_ID);
                     assertThat(u.username()).isEqualTo("uet");
+                    assertThat(u.createdAt()).isNotNull(); // DB tự điền khi seed
                 });
         assertThat(users.findById(SAMPLE_USER_ID)).isPresent();
         assertThat(users.existsByEmail("uet@gmail.com")).isTrue();
@@ -56,10 +57,24 @@ class RepositoryAdaptersTest {
 
     @Test
     void savesNewUser() {
-        User saved = users.save(new User(UUID.randomUUID(), "minh", "minh@gmail.com", "hash"));
+        Instant createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        User saved = users.save(new User(UUID.randomUUID(), "minh", "minh@gmail.com", "hash", createdAt));
 
         assertThat(users.findByEmail("minh@gmail.com")).contains(saved);
         assertThat(users.existsByUsername("minh")).isTrue();
+    }
+
+    @Test
+    void updatesPasswordHashOfExistingUser() {
+        User sample = users.findById(SAMPLE_USER_ID).orElseThrow();
+
+        users.save(sample.withPasswordHash("new-hash"));
+
+        assertThat(users.findById(SAMPLE_USER_ID))
+                .hasValueSatisfying(u -> {
+                    assertThat(u.passwordHash()).isEqualTo("new-hash");
+                    assertThat(u.createdAt()).isEqualTo(sample.createdAt());
+                });
     }
 
     @Test

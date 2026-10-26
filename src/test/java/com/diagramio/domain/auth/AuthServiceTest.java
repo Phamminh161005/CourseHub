@@ -27,7 +27,8 @@ import org.mockito.ArgumentCaptor;
 class AuthServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-22T10:00:00Z");
-    private static final User USER = new User(UUID.randomUUID(), "uet", "uet@gmail.com", "hashed:secret");
+    private static final User USER = new User(UUID.randomUUID(), "uet", "uet@gmail.com", "hashed:secret",
+            NOW.minus(Duration.ofDays(30)));
 
     private UserRepository userRepository;
     private RefreshTokenRepository refreshTokenRepository;
@@ -65,6 +66,7 @@ class AuthServiceTest {
         assertThat(created.id()).isNotNull();
         assertThat(created.email()).isEqualTo("minh@gmail.com");
         assertThat(created.passwordHash()).isEqualTo("hashed:secret123");
+        assertThat(created.createdAt()).isEqualTo(NOW);
     }
 
     @Test
@@ -167,10 +169,10 @@ class AuthServiceTest {
     // ---- logout ----
 
     @Test
-    void logoutRevokesToken() {
+    void logoutRevokesOwnToken() {
         RefreshToken stored = storedToken("my-token", NOW.plusSeconds(60), false);
 
-        authService.logout("my-token");
+        authService.logout(USER.id(), "my-token");
 
         ArgumentCaptor<RefreshToken> saved = ArgumentCaptor.forClass(RefreshToken.class);
         verify(refreshTokenRepository).save(saved.capture());
@@ -179,10 +181,19 @@ class AuthServiceTest {
     }
 
     @Test
+    void logoutIgnoresTokenOfAnotherUser() {
+        storedToken("my-token", NOW.plusSeconds(60), false);
+
+        authService.logout(UUID.randomUUID(), "my-token");
+
+        verify(refreshTokenRepository, never()).save(any());
+    }
+
+    @Test
     void logoutWithUnknownTokenDoesNothing() {
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.empty());
 
-        authService.logout("made-up");
+        authService.logout(USER.id(), "made-up");
 
         verify(refreshTokenRepository, never()).save(any());
     }

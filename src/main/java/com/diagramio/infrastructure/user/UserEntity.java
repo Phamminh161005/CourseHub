@@ -5,9 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 
-/** Ánh xạ bảng users. created_at/updated_at không map, để DB tự điền giá trị mặc định. */
+/** Ánh xạ bảng users. updated_at không map, để DB tự điền giá trị mặc định. */
 @Entity
 @Table(name = "users")
 public class UserEntity {
@@ -24,6 +25,9 @@ public class UserEntity {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
     protected UserEntity() {
         // JPA cần constructor không tham số
     }
@@ -34,10 +38,11 @@ public class UserEntity {
         entity.username = user.username();
         entity.email = user.email();
         entity.passwordHash = user.passwordHash();
+        entity.createdAt = user.createdAt();
         return entity;
     }
 
     User toDomain() {
-        return new User(id, username, email, passwordHash);
+        return new User(id, username, email, passwordHash, createdAt);
     }
 }

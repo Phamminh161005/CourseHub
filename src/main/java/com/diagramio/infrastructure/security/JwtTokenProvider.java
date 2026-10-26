@@ -15,7 +15,10 @@ import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
-/** Tạo và kiểm tra access token (JWT, ký HS256). subject = id người dùng. */
+/**
+ * Tạo và kiểm tra access token (JWT ký HMAC; jjwt chọn HS256/384/512 theo độ dài khóa).
+ * subject = id người dùng.
+ */
 @Component
 public class JwtTokenProvider implements TokenIssuer {
 

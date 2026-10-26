@@ -50,7 +50,8 @@ public class AuthService {
         if (userRepository.existsByUsername(username)) {
             throw new ConflictException("Username is already taken");
         }
-        User user = new User(UUID.randomUUID(), username, normalizedEmail, passwordHasher.hash(rawPassword));
+        User user = new User(UUID.randomUUID(), username, normalizedEmail, passwordHasher.hash(rawPassword),
+                clock.instant());
         return userRepository.save(user);
     }
 
@@ -73,9 +74,13 @@ public class AuthService {
         return issueTokens(user);
     }
 
-    /** Thu hồi refresh token được gửi lên. Token không tồn tại hoặc đã thu hồi thì bỏ qua. */
-    public void logout(String rawRefreshToken) {
+    /**
+     * Thu hồi refresh token được gửi lên, chỉ khi nó thuộc người đang đăng nhập.
+     * Token không tồn tại, đã thu hồi hoặc của người khác thì bỏ qua.
+     */
+    public void logout(UUID userId, String rawRefreshToken) {
         refreshTokenRepository.findByTokenHash(hash(rawRefreshToken))
+                .filter(t -> t.userId().equals(userId))
                 .filter(t -> !t.revoked())
                 .ifPresent(t -> refreshTokenRepository.save(t.revoke()));
     }
