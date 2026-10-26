@@ -15,8 +15,10 @@ import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.user.User;
 import com.diagramio.domain.user.UserService;
+import com.diagramio.infrastructure.security.JwtTokenProvider;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,41 @@ class UserControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
+
+    // ---- qua filter JWT thật (header Authorization) ----
+
+    @Test
+    void meWithValidBearerTokenGoesThroughJwtFilter() throws Exception {
+        when(jwtTokenProvider.parseUserId("valid-token")).thenReturn(Optional.of(USER_ID));
+        when(userService.getById(USER_ID)).thenReturn(USER);
+
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer valid-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(USER_ID.toString()));
+    }
+
+    @Test
+    void meWithInvalidBearerTokenReturns401Json() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer expired-or-forged"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message").value("Authentication required"));
+
+        verify(userService, never()).getById(any());
+    }
+
+    @Test
+    void meWithoutBearerPrefixReturns401() throws Exception {
+        when(jwtTokenProvider.parseUserId("valid-token")).thenReturn(Optional.of(USER_ID));
+
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "valid-token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ---- giả lập người đã đăng nhập ----
 
     @Test
     void meReturnsCurrentUserWithoutPasswordHash() throws Exception {

@@ -15,6 +15,7 @@ import com.diagramio.domain.auth.AuthTokens;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.UnauthorizedException;
 import com.diagramio.domain.user.User;
+import com.diagramio.infrastructure.security.JwtTokenProvider;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +43,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
 
     // ---- register ----
 
