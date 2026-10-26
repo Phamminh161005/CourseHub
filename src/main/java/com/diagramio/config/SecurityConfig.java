@@ -8,7 +8,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * Khung bảo mật tối thiểu: stateless, endpoint công khai được mở, còn lại phải xác thực.
@@ -26,7 +28,8 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http, ObjectProvider<UatHeaderAuthenticationFilter> uatFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -35,6 +38,10 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/diagrams/*").permitAll()
                         .anyRequest().authenticated());
+        UatHeaderAuthenticationFilter filter = uatFilter.getIfAvailable();
+        if (filter != null) {
+            http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+        }
         return http.build();
     }
 }

@@ -10,6 +10,9 @@ import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "diagrams")
 public class DiagramEntity {
@@ -24,7 +27,8 @@ public class DiagramEntity {
     @Column(name = "diagram_type")
     private String diagramType;
 
-    @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "data", columnDefinition = "jsonb")
     private String data;
 
     @Version

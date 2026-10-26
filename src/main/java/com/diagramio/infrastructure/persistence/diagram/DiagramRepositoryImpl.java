@@ -31,19 +31,14 @@ public class DiagramRepositoryImpl implements DiagramRepository {
 
     @Override
     public List<Diagram> findByOwnerId(UUID ownerId, String diagramType, String title, int page, int size) {
-        return repository
-                .findByOwnerIdAndDiagramTypeContainingAndTitleContainingIgnoreCase(
-                        ownerId, diagramType, title, PageRequest.of(page, size))
+        return findPage(ownerId, diagramType, title, PageRequest.of(page, size))
                 .map(mapper::toDomain)
                 .getContent();
     }
 
     @Override
     public long countByOwnerId(UUID ownerId, String diagramType, String title) {
-        return repository
-                .findByOwnerIdAndDiagramTypeContainingAndTitleContainingIgnoreCase(
-                        ownerId, diagramType, title, PageRequest.of(0, 1))
-                .getTotalElements();
+        return findPage(ownerId, diagramType, title, PageRequest.of(0, 1)).getTotalElements();
     }
 
     @Override
@@ -61,5 +56,23 @@ public class DiagramRepositoryImpl implements DiagramRepository {
     @Override
     public void deleteById(UUID id) {
         repository.deleteById(id);
+    }
+
+    private org.springframework.data.domain.Page<DiagramEntity> findPage(
+            UUID ownerId, String diagramType, String title, PageRequest pageRequest) {
+        boolean hasDiagramType = diagramType != null && !diagramType.isBlank();
+        boolean hasTitle = title != null && !title.isBlank();
+
+        if (hasDiagramType && hasTitle) {
+            return repository.findByOwnerIdAndDiagramTypeContainingAndTitleContainingIgnoreCase(
+                    ownerId, diagramType, title, pageRequest);
+        }
+        if (hasDiagramType) {
+            return repository.findByOwnerIdAndDiagramTypeContaining(ownerId, diagramType, pageRequest);
+        }
+        if (hasTitle) {
+            return repository.findByOwnerIdAndTitleContainingIgnoreCase(ownerId, title, pageRequest);
+        }
+        return repository.findByOwnerId(ownerId, pageRequest);
     }
 }

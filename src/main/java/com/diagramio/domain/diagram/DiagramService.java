@@ -13,7 +13,7 @@ import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
 /** Domain rules for diagram management. This class intentionally has no framework dependency. */
 public class DiagramService {
 
-    public static final String DEFAULT_DATA = "{\"nodes\":[], \"edges\":[]}";
+    public static final String DEFAULT_DATA = "{\"nodes\": [], \"edges\": []}";
     private static final int MAX_DATA_BYTES = 2 * 1024 * 1024;
     private static final String UML = "UML";
     private static final String ERD = "ERD";
@@ -58,7 +58,7 @@ public class DiagramService {
         current.setData(requested.getData());
         current.setPublic(requested.isPublic());
         current.setUpdatedBy(requested.getUpdatedBy());
-        current.setVersion(current.getVersion() + 1);
+        //current.setVersion(current.getVersion() + 1);
         current.setUpdatedAt(Instant.now());
         return repository.save(current);
     }
@@ -97,14 +97,14 @@ public class DiagramService {
         if (diagramType != null && !diagramType.isBlank()) {
             validateDiagramType(diagramType);
         }
-        return repository.findByOwnerId(ownerId, diagramType, normalizeTitle(title), page, size);
+        return repository.findByOwnerId(ownerId, normalizeFilter(diagramType), normalizeFilter(title), page, size);
     }
 
     public long countDiagramsByOwner(UUID ownerId, String diagramType, String title) {
         if (diagramType != null && !diagramType.isBlank()) {
             validateDiagramType(diagramType);
         }
-        return repository.countByOwnerId(ownerId, diagramType, normalizeTitle(title));
+        return repository.countByOwnerId(ownerId, normalizeFilter(diagramType), normalizeFilter(title));
     }
 
     public List<Diagram> getPublicDiagrams(int page, int size) {
@@ -139,8 +139,8 @@ public class DiagramService {
         }
     }
 
-    private String normalizeTitle(String title) {
-        return title == null || title.isBlank() ? null : title.trim();
+    private String normalizeFilter(String value) {
+        return value == null || value.isBlank() ? "" : value.trim();
     }
 
     private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
