@@ -1,8 +1,7 @@
-package com.diagramio.api;
+package com.diagramio.api.share;
 
-import com.diagramio.api.dto.share.SharedDiagramResponse;
-import com.diagramio.domain.model.SharedDiagramView;
-import com.diagramio.domain.service.ShareService;
+import com.diagramio.domain.share.SharedDiagramView;
+import com.diagramio.domain.share.ShareService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;

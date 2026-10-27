@@ -15,17 +15,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.diagramio.api.GlobalExceptionHandler;
 import com.diagramio.config.SecurityConfig;
+import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramService;
 import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
+import com.diagramio.domain.share.ShareService;
 import com.diagramio.infrastructure.security.JwtTokenProvider;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -37,6 +40,8 @@ class DiagramControllerTest {
 
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID DIAGRAM_ID = UUID.randomUUID();
+    // data gửi lên là object JSON; controller chuyển thành chuỗi gọn trước khi xuống domain
+    private static final String SENT_DATA = "{\"nodes\":[],\"edges\":[]}";
 
     @Autowired
     private MockMvc mockMvc;
@@ -46,6 +51,9 @@ class DiagramControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
+
+    @MockitoBean
+    private ShareService shareService; // filter X-Share-Token cần; mặc định coi mọi token là không hợp lệ
 
     @Test
     void createReturns201ForValidRequest() throws Exception {
@@ -75,7 +83,7 @@ class DiagramControllerTest {
     @Test
     void updateReturns200ForValidRequest() throws Exception {
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq("ERD"),
-                eq(DiagramService.DEFAULT_DATA), eq(false), eq(USER_ID), eq(1)))
+                eq(SENT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
                 .thenReturn(diagram());
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -83,7 +91,7 @@ class DiagramControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": [], \\"edges\\": []}","isPublic":false}
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(DIAGRAM_ID.toString()));
@@ -92,7 +100,7 @@ class DiagramControllerTest {
     @Test
     void updateReturns409ForVersionConflict() throws Exception {
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq("ERD"),
-                eq(DiagramService.DEFAULT_DATA), eq(false), eq(USER_ID), eq(1)))
+                eq(SENT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
                 .thenThrow(new OptimisticLockConflictException(DIAGRAM_ID, 1, 2));
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -100,7 +108,7 @@ class DiagramControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": [], \\"edges\\": []}","isPublic":false}
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message")
@@ -110,7 +118,7 @@ class DiagramControllerTest {
     @Test
     void deleteReturns403ForNonOwner() throws Exception {
         doThrow(new UnauthorizedDiagramAccessException("Only the diagram owner can delete it"))
-                .when(diagramService).deleteDiagram(DIAGRAM_ID, USER_ID);
+                .when(diagramService).deleteDiagram(DIAGRAM_ID, Caller.user(USER_ID));
 
         mockMvc.perform(delete("/api/v1/diagrams/{id}", DIAGRAM_ID)
                         .with(user(USER_ID.toString())))
@@ -119,11 +127,75 @@ class DiagramControllerTest {
 
     @Test
     void getReturns404WhenDiagramDoesNotExist() throws Exception {
-        when(diagramService.getDiagramById(DIAGRAM_ID, null, false))
+        when(diagramService.getDiagramById(DIAGRAM_ID, Caller.anonymous()))
                 .thenThrow(new DiagramNotFoundException("Diagram not found: " + DIAGRAM_ID));
 
         mockMvc.perform(get("/api/v1/diagrams/{id}", DIAGRAM_ID))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateWithEditShareTokenPassesShareCallerWithoutLogin() throws Exception {
+        Caller editor = Caller.shareToken(DIAGRAM_ID, ShareRole.EDIT);
+        when(shareService.resolveShareToken("edit-token")).thenReturn(Optional.of(editor));
+        when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq("ERD"),
+                eq(SENT_DATA), eq(false), eq(editor), eq(1)))
+                .thenReturn(diagram());
+
+        mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
+                        .header("X-Share-Token", "edit-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Orders","diagramType":"ERD","version":1,
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void updateWithUnknownShareTokenReturns401() throws Exception {
+        mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
+                        .header("X-Share-Token", "revoked-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Orders","diagramType":"ERD","version":1,
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteWithEditShareTokenIsForbidden() throws Exception {
+        Caller editor = Caller.shareToken(DIAGRAM_ID, ShareRole.EDIT);
+        when(shareService.resolveShareToken("edit-token")).thenReturn(Optional.of(editor));
+        doThrow(new UnauthorizedDiagramAccessException("Only the diagram owner can delete it"))
+                .when(diagramService).deleteDiagram(DIAGRAM_ID, editor);
+
+        mockMvc.perform(delete("/api/v1/diagrams/{id}", DIAGRAM_ID)
+                        .header("X-Share-Token", "edit-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void responseDataIsJsonObject() throws Exception {
+        when(diagramService.getDiagramById(DIAGRAM_ID, Caller.anonymous())).thenReturn(diagram());
+
+        mockMvc.perform(get("/api/v1/diagrams/{id}", DIAGRAM_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nodes").isArray())
+                .andExpect(jsonPath("$.data.edges").isArray());
+    }
+
+    @Test
+    void updateRejectsDataSentAsString() throws Exception {
+        mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
+                        .with(user(USER_ID.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Orders","diagramType":"ERD","version":1,
+                                 "data":"{\\"nodes\\": []}","isPublic":false}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     private Diagram diagram() {

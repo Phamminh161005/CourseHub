@@ -57,14 +57,17 @@ public class DiagramVersionController {
     @ApiResponse(responseCode = "201", description = "Đã tạo phiên bản")
     @ApiResponse(responseCode = "400", description = "Ghi chú quá 255 ký tự",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "Có phiên bản khác được lưu cùng lúc, thử lại",
+    @ApiResponse(responseCode = "409", description = "Sơ đồ đã bị sửa sau version client gửi lên, "
+            + "hoặc có phiên bản khác được lưu cùng lúc; tải lại rồi thử lại",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<DiagramVersionResponse> create(@PathVariable UUID diagramId,
                                                          @Valid @RequestBody(required = false)
                                                          CreateVersionRequest request,
                                                          Authentication authentication) {
         String note = request == null ? null : request.note();
-        DiagramVersion version = versionService.createVersion(diagramId, note, CallerResolver.resolve(authentication));
+        Integer expectedVersion = request == null ? null : request.version();
+        DiagramVersion version = versionService.createVersion(diagramId, note, expectedVersion,
+                CallerResolver.resolve(authentication));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{versionId}")
                 .buildAndExpand(version.id())

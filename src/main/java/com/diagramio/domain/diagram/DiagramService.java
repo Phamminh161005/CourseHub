@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
@@ -44,48 +45,46 @@ public class DiagramService {
         return repository.save(diagram);
     }
 
-    public Diagram updateDiagram(Diagram requested, Integer requestVersion) {
-        if (requested == null || requested.getId() == null) {
+    /**
+     * Owner hoặc người cầm link edit được sửa. Chỉ owner được đổi trạng thái công khai;
+     * người sửa qua link gửi isPublic khác thì giữ nguyên giá trị cũ.
+     * updatedBy là người đăng nhập, NULL nếu sửa qua link mà không đăng nhập.
+     */
+    public Diagram updateDiagram(UUID id, String title, String diagramType, String data,
+                                 boolean isPublic, Caller caller, Integer requestVersion) {
+        if (id == null) {
             throw new InvalidInputException("Diagram id is required");
         }
-        Diagram current = findRequired(requested.getId());
-        checkVersion(requested.getId(), requestVersion, current.getVersion());
-        validateDiagramType(requested.getDiagramType());
-        validateJson(requested.getData());
+        Diagram current = findRequired(id);
+        if (!caller.canEdit(current)) {
+            throw new UnauthorizedDiagramAccessException("You do not have permission to edit this diagram");
+        }
+        checkVersion(id, requestVersion, current.getVersion());
+        validateDiagramType(diagramType);
+        validateJson(data);
 
-        current.setTitle(requested.getTitle());
-        current.setDiagramType(requested.getDiagramType());
-        current.setData(requested.getData());
-        current.setPublic(requested.isPublic());
-        current.setUpdatedBy(requested.getUpdatedBy());
-        //current.setVersion(current.getVersion() + 1);
+        current.setTitle(title);
+        current.setDiagramType(diagramType);
+        current.setData(data);
+        if (caller.canManage(current)) {
+            current.setPublic(isPublic);
+        }
+        current.setUpdatedBy(caller.userId());
         current.setUpdatedAt(Instant.now());
         return repository.save(current);
     }
 
-    public Diagram updateDiagram(UUID id, String title, String diagramType, String data,
-                                 boolean isPublic, UUID updatedBy, Integer requestVersion) {
-        Diagram requested = new Diagram();
-        requested.setId(id);
-        requested.setTitle(title);
-        requested.setDiagramType(diagramType);
-        requested.setData(data);
-        requested.setPublic(isPublic);
-        requested.setUpdatedBy(updatedBy);
-        return updateDiagram(requested, requestVersion);
-    }
-
-    public void deleteDiagram(UUID id, UUID currentUserId) {
+    public void deleteDiagram(UUID id, Caller caller) {
         Diagram diagram = findRequired(id);
-        if (!diagram.isOwner(currentUserId)) {
+        if (!caller.canManage(diagram)) {
             throw new UnauthorizedDiagramAccessException("Only the diagram owner can delete it");
         }
         repository.deleteById(id);
     }
 
-    public Diagram getDiagramById(UUID id, UUID currentUserId, boolean hasPermission) {
+    public Diagram getDiagramById(UUID id, Caller caller) {
         Diagram diagram = findRequired(id);
-        if (!diagram.canAccess(currentUserId, hasPermission)) {
+        if (!caller.canView(diagram)) {
             throw new UnauthorizedDiagramAccessException("You do not have access to this diagram");
         }
         return diagram;

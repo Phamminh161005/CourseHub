@@ -1,8 +1,8 @@
 package com.diagramio.config;
 
 import com.diagramio.domain.diagram.DiagramRepository;
-import com.diagramio.domain.repository.DiagramShareRepository;
-import com.diagramio.domain.service.ShareService;
+import com.diagramio.domain.share.DiagramShareRepository;
+import com.diagramio.domain.share.ShareService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  * việc khởi tạo service được thực hiện tập trung tại tầng Config.
  */
 @Configuration
-public class ServiceConfig {
+public class ShareConfig {
 
     @Bean
     public ShareService shareService(DiagramShareRepository shareRepository, DiagramRepository diagramRepository) {

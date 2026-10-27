@@ -17,9 +17,24 @@ public record Caller(UUID userId, UUID sharedDiagramId, ShareRole shareRole) {
         return new Caller(null, diagramId, role);
     }
 
+    /** Chưa đăng nhập, không cầm token chia sẻ: chỉ xem được sơ đồ công khai. */
+    public static Caller anonymous() {
+        return new Caller(null, null, null);
+    }
+
+    /** Sơ đồ công khai, hoặc owner, hoặc token chia sẻ (view/edit) của sơ đồ này. */
+    public boolean canView(Diagram diagram) {
+        return diagram.isPublic() || canViewHistory(diagram);
+    }
+
+    /** Chỉ owner: xóa sơ đồ, quản lý liên kết chia sẻ. Token chia sẻ (kể cả edit) không đủ. */
+    public boolean canManage(Diagram diagram) {
+        return diagram.isOwner(userId);
+    }
+
     /** Owner hoặc token chia sẻ quyền edit của chính sơ đồ này. */
     public boolean canEdit(Diagram diagram) {
-        return diagram.isOwner(userId) || (sharesDiagram(diagram) && shareRole == ShareRole.EDIT);
+        return canManage(diagram) || (sharesDiagram(diagram) && shareRole == ShareRole.EDIT);
     }
 
     /**

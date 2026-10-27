@@ -1,4 +1,4 @@
-package com.diagramio.infrastructure.persistence.entity;
+package com.diagramio.infrastructure.share;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

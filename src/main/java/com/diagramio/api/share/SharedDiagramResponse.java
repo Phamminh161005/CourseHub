@@ -1,6 +1,6 @@
-package com.diagramio.api.dto.share;
+package com.diagramio.api.share;
 
-import com.diagramio.domain.model.SharedDiagramView;
+import com.diagramio.domain.share.SharedDiagramView;
 import com.fasterxml.jackson.annotation.JsonRawValue;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -17,7 +17,8 @@ public record SharedDiagramResponse(
         @Schema(description = "Loại sơ đồ (UML hoặc ERD)")
         String diagramType,
 
-        @Schema(description = "Cấu trúc dữ liệu các node và edge của sơ đồ")
+        @Schema(description = "Cấu trúc dữ liệu các node và edge của sơ đồ", type = "object",
+                example = "{\"nodes\": [], \"edges\": []}")
         @JsonRawValue
         String data,
 
@@ -42,7 +43,7 @@ public record SharedDiagramResponse(
                 view.getTitle(),
                 view.getDiagramType(),
                 view.getData(),
-                view.getRole(),
+                view.getRole().value(),
                 view.getVersion(),
                 view.isPublic(),
                 view.getCreatedAt(),

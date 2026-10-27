@@ -1,7 +1,7 @@
-package com.diagramio.infrastructure.mapper;
+package com.diagramio.infrastructure.share;
 
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.infrastructure.persistence.entity.DiagramShareEntity;
+import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.share.DiagramShare;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,7 +15,7 @@ public class DiagramShareMapper {
                 entity.getId(),
                 entity.getDiagramId(),
                 entity.getShareToken(),
-                entity.getRole(),
+                ShareRole.from(entity.getRole()),
                 entity.getCreatedAt()
         );
     }
@@ -28,7 +28,7 @@ public class DiagramShareMapper {
                 domain.getId(),
                 domain.getDiagramId(),
                 domain.getShareToken(),
-                domain.getRole(),
+                domain.getRole().value(),
                 domain.getCreatedAt()
         );
     }

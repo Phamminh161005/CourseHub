@@ -1,13 +1,11 @@
-package com.diagramio.domain.service;
+package com.diagramio.domain.share;
 
+import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.exception.ForbiddenException;
-import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.diagram.Diagram;
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.model.SharedDiagramView;
 import com.diagramio.domain.diagram.DiagramRepository;
-import com.diagramio.domain.repository.DiagramShareRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,10 +63,10 @@ class ShareServiceTest {
     @DisplayName("Chủ sở hữu có thể lấy danh sách liên kết chia sẻ")
     void getShares_OwnerSuccess() {
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
-        DiagramShare share = new DiagramShare(UUID.randomUUID(), diagramId, "token123", "view", Instant.now());
+        DiagramShare share = new DiagramShare(UUID.randomUUID(), diagramId, "token123", ShareRole.VIEW, Instant.now());
         when(shareRepository.findByDiagramId(diagramId)).thenReturn(List.of(share));
 
-        List<DiagramShare> result = shareService.getShares(diagramId, ownerId);
+        List<DiagramShare> result = shareService.getShares(diagramId, Caller.user(ownerId));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getShareToken()).isEqualTo("token123");
@@ -79,9 +77,19 @@ class ShareServiceTest {
     void getShares_ForbiddenForNonOwner() {
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
 
-        assertThatThrownBy(() -> shareService.getShares(diagramId, otherUserId))
+        assertThatThrownBy(() -> shareService.getShares(diagramId, Caller.user(otherUserId)))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Chỉ chủ sở hữu");
+    }
+
+    @Test
+    @DisplayName("Người cầm link edit vẫn không được quản lý liên kết (chỉ owner)")
+    void createShare_ForbiddenForEditShareToken() {
+        when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
+
+        assertThatThrownBy(() -> shareService.createShare(diagramId, ShareRole.EDIT,
+                Caller.shareToken(diagramId, ShareRole.EDIT)))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     @Test
@@ -89,7 +97,7 @@ class ShareServiceTest {
     void getShares_DiagramNotFound() {
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> shareService.getShares(diagramId, ownerId))
+        assertThatThrownBy(() -> shareService.getShares(diagramId, Caller.user(ownerId)))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -99,38 +107,29 @@ class ShareServiceTest {
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
         when(shareRepository.save(any(DiagramShare.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        DiagramShare created = shareService.createShare(diagramId, "view", ownerId);
+        DiagramShare created = shareService.createShare(diagramId, ShareRole.VIEW, Caller.user(ownerId));
 
         assertThat(created).isNotNull();
         assertThat(created.getDiagramId()).isEqualTo(diagramId);
-        assertThat(created.getRole()).isEqualTo("view");
+        assertThat(created.getRole()).isEqualTo(ShareRole.VIEW);
         assertThat(created.getShareToken()).isNotBlank();
         verify(shareRepository).save(any(DiagramShare.class));
     }
 
-    @Test
-    @DisplayName("Tạo liên kết với quyền không hợp lệ sẽ bị InvalidInputException")
-    void createShare_InvalidRole() {
-        when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
-
-        assertThatThrownBy(() -> shareService.createShare(diagramId, "admin", ownerId))
-                .isInstanceOf(InvalidInputException.class)
-                .hasMessageContaining("chỉ có thể là 'view' hoặc 'edit'");
-    }
 
     @Test
     @DisplayName("Cập nhật quyền liên kết chia sẻ thành công (view -> edit)")
     void updateShareRole_Success() {
         UUID shareId = UUID.randomUUID();
-        DiagramShare oldShare = new DiagramShare(shareId, diagramId, "token123", "view", Instant.now());
+        DiagramShare oldShare = new DiagramShare(shareId, diagramId, "token123", ShareRole.VIEW, Instant.now());
 
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
         when(shareRepository.findById(shareId)).thenReturn(Optional.of(oldShare));
         when(shareRepository.save(any(DiagramShare.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        DiagramShare updated = shareService.updateShareRole(diagramId, shareId, "edit", ownerId);
+        DiagramShare updated = shareService.updateShareRole(diagramId, shareId, ShareRole.EDIT, Caller.user(ownerId));
 
-        assertThat(updated.getRole()).isEqualTo("edit");
+        assertThat(updated.getRole()).isEqualTo(ShareRole.EDIT);
         assertThat(updated.getShareToken()).isEqualTo("token123");
     }
 
@@ -138,12 +137,12 @@ class ShareServiceTest {
     @DisplayName("Thu hồi liên kết chia sẻ thành công")
     void revokeShare_Success() {
         UUID shareId = UUID.randomUUID();
-        DiagramShare oldShare = new DiagramShare(shareId, diagramId, "token123", "view", Instant.now());
+        DiagramShare oldShare = new DiagramShare(shareId, diagramId, "token123", ShareRole.VIEW, Instant.now());
 
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
         when(shareRepository.findById(shareId)).thenReturn(Optional.of(oldShare));
 
-        shareService.revokeShare(diagramId, shareId, ownerId);
+        shareService.revokeShare(diagramId, shareId, Caller.user(ownerId));
 
         verify(shareRepository).deleteById(shareId);
     }
@@ -152,7 +151,7 @@ class ShareServiceTest {
     @DisplayName("Truy xuất cấu trúc sơ đồ qua token hợp lệ (Public)")
     void getDiagramByShareToken_Success() {
         String token = "valid_token_xyz";
-        DiagramShare share = new DiagramShare(UUID.randomUUID(), diagramId, token, "edit", Instant.now());
+        DiagramShare share = new DiagramShare(UUID.randomUUID(), diagramId, token, ShareRole.EDIT, Instant.now());
 
         when(shareRepository.findByShareToken(token)).thenReturn(Optional.of(share));
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
@@ -162,7 +161,7 @@ class ShareServiceTest {
         assertThat(view).isNotNull();
         assertThat(view.getDiagramId()).isEqualTo(diagramId);
         assertThat(view.getTitle()).isEqualTo("Sơ đồ lớp BTL");
-        assertThat(view.getRole()).isEqualTo("edit");
+        assertThat(view.getRole()).isEqualTo(ShareRole.EDIT);
     }
 
     @Test
@@ -173,5 +172,25 @@ class ShareServiceTest {
         assertThatThrownBy(() -> shareService.getDiagramByShareToken("invalid_token"))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("không tồn tại");
+    }
+
+    @Test
+    @DisplayName("Token X-Share-Token hợp lệ được đổi thành Caller có quyền trên đúng sơ đồ")
+    void resolveShareToken_ValidToken() {
+        DiagramShare share = new DiagramShare(UUID.randomUUID(), diagramId, "edit_token", ShareRole.EDIT, Instant.now());
+        when(shareRepository.findByShareToken("edit_token")).thenReturn(Optional.of(share));
+
+        assertThat(shareService.resolveShareToken(" edit_token "))
+                .contains(Caller.shareToken(diagramId, ShareRole.EDIT));
+    }
+
+    @Test
+    @DisplayName("Token không tồn tại hoặc đã thu hồi thì không có Caller")
+    void resolveShareToken_UnknownOrBlank() {
+        when(shareRepository.findByShareToken("revoked")).thenReturn(Optional.empty());
+
+        assertThat(shareService.resolveShareToken("revoked")).isEmpty();
+        assertThat(shareService.resolveShareToken("  ")).isEmpty();
+        assertThat(shareService.resolveShareToken(null)).isEmpty();
     }
 }

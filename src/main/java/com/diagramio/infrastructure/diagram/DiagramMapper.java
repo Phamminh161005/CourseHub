@@ -1,4 +1,4 @@
-package com.diagramio.infrastructure.persistence.diagram;
+package com.diagramio.infrastructure.diagram;
 
 import com.diagramio.domain.diagram.Diagram;
 import org.springframework.stereotype.Component;

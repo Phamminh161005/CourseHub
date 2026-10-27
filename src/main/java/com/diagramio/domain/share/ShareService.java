@@ -1,24 +1,24 @@
-package com.diagramio.domain.service;
+package com.diagramio.domain.share;
 
+import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.exception.ForbiddenException;
-import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.diagram.Diagram;
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.model.SharedDiagramView;
 import com.diagramio.domain.diagram.DiagramRepository;
-import com.diagramio.domain.repository.DiagramShareRepository;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Tầng nghiệp vụ xử lý Chia sẻ & Phân quyền sơ đồ.
  * Thuần Java (Plain Java), không dùng bất kỳ annotation nào của Spring hay JPA.
+ * Quản lý liên kết chỉ dành cho chủ sở hữu (Caller.canManage).
  */
 public class ShareService {
 
@@ -34,8 +34,8 @@ public class ShareService {
     /**
      * Lấy danh sách liên kết chia sẻ của sơ đồ. Chỉ chủ sở hữu mới có quyền xem.
      */
-    public List<DiagramShare> getShares(UUID diagramId, UUID currentUserId) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, currentUserId,
+    public List<DiagramShare> getShares(UUID diagramId, Caller caller) {
+        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
                 "Chỉ chủ sở hữu mới có quyền xem danh sách chia sẻ sơ đồ này");
         return shareRepository.findByDiagramId(diagram.getId());
     }
@@ -43,18 +43,15 @@ public class ShareService {
     /**
      * Tạo liên kết chia sẻ mới (role: view hoặc edit). Chỉ chủ sở hữu mới có quyền tạo.
      */
-    public DiagramShare createShare(UUID diagramId, String role, UUID currentUserId) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, currentUserId,
+    public DiagramShare createShare(UUID diagramId, ShareRole role, Caller caller) {
+        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
                 "Chỉ chủ sở hữu mới có quyền tạo liên kết chia sẻ sơ đồ này");
-
-        String validatedRole = validateRole(role);
-        String shareToken = generateUniqueToken();
 
         DiagramShare share = new DiagramShare(
                 UUID.randomUUID(),
                 diagram.getId(),
-                shareToken,
-                validatedRole,
+                generateUniqueToken(),
+                role,
                 Instant.now()
         );
 
@@ -64,37 +61,22 @@ public class ShareService {
     /**
      * Thay đổi mức độ quyền chia sẻ (view <-> edit). Chỉ chủ sở hữu mới có quyền đổi.
      */
-    public DiagramShare updateShareRole(UUID diagramId, UUID shareId, String newRole, UUID currentUserId) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, currentUserId,
+    public DiagramShare updateShareRole(UUID diagramId, UUID shareId, ShareRole newRole, Caller caller) {
+        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
                 "Chỉ chủ sở hữu mới có quyền thay đổi quyền chia sẻ của sơ đồ này");
 
-        String validatedRole = validateRole(newRole);
-
-        DiagramShare existingShare = shareRepository.findById(shareId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy liên kết chia sẻ"));
-
-        if (!existingShare.getDiagramId().equals(diagram.getId())) {
-            throw new NotFoundException("Liên kết chia sẻ không thuộc sơ đồ này");
-        }
-
-        DiagramShare updatedShare = existingShare.withRole(validatedRole);
-        return shareRepository.save(updatedShare);
+        DiagramShare existingShare = findShareOfDiagram(diagram, shareId);
+        return shareRepository.save(existingShare.withRole(newRole));
     }
 
     /**
      * Thu hồi liên kết chia sẻ. Chỉ chủ sở hữu mới có quyền thu hồi.
      */
-    public void revokeShare(UUID diagramId, UUID shareId, UUID currentUserId) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, currentUserId,
+    public void revokeShare(UUID diagramId, UUID shareId, Caller caller) {
+        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
                 "Chỉ chủ sở hữu mới có quyền thu hồi liên kết chia sẻ của sơ đồ này");
 
-        DiagramShare existingShare = shareRepository.findById(shareId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy liên kết chia sẻ"));
-
-        if (!existingShare.getDiagramId().equals(diagram.getId())) {
-            throw new NotFoundException("Liên kết chia sẻ không thuộc sơ đồ này");
-        }
-
+        findShareOfDiagram(diagram, shareId);
         shareRepository.deleteById(shareId);
     }
 
@@ -125,7 +107,19 @@ public class ShareService {
         );
     }
 
-    private Diagram getDiagramAndVerifyOwner(UUID diagramId, UUID currentUserId, String forbiddenMessage) {
+    /**
+     * Đổi token chia sẻ (header X-Share-Token) thành Caller có quyền trên đúng sơ đồ đó.
+     * Token không tồn tại hoặc đã thu hồi (bị xóa) thì trả rỗng.
+     */
+    public Optional<Caller> resolveShareToken(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        return shareRepository.findByShareToken(token.trim())
+                .map(share -> Caller.shareToken(share.getDiagramId(), share.getRole()));
+    }
+
+    private Diagram getDiagramAndVerifyOwner(UUID diagramId, Caller caller, String forbiddenMessage) {
         if (diagramId == null) {
             throw new NotFoundException("Không tìm thấy sơ đồ");
         }
@@ -133,22 +127,20 @@ public class ShareService {
         Diagram diagram = diagramRepository.findById(diagramId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy sơ đồ với mã " + diagramId));
 
-        if (currentUserId == null || !diagram.getOwnerId().equals(currentUserId)) {
+        if (!caller.canManage(diagram)) {
             throw new ForbiddenException(forbiddenMessage);
         }
 
         return diagram;
     }
 
-    private String validateRole(String role) {
-        if (role == null || role.isBlank()) {
-            throw new InvalidInputException("Quyền chia sẻ không được để trống");
+    private DiagramShare findShareOfDiagram(Diagram diagram, UUID shareId) {
+        DiagramShare share = shareRepository.findById(shareId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy liên kết chia sẻ"));
+        if (!share.getDiagramId().equals(diagram.getId())) {
+            throw new NotFoundException("Liên kết chia sẻ không thuộc sơ đồ này");
         }
-        String normalized = role.trim().toLowerCase();
-        if (!"view".equals(normalized) && !"edit".equals(normalized)) {
-            throw new InvalidInputException("Quyền chia sẻ chỉ có thể là 'view' hoặc 'edit'");
-        }
-        return normalized;
+        return share;
     }
 
     private String generateUniqueToken() {

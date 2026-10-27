@@ -1,5 +1,6 @@
-package com.diagramio.domain.model;
+package com.diagramio.domain.share;
 
+import com.diagramio.domain.access.ShareRole;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -13,29 +14,18 @@ public class DiagramShare {
     private final UUID id;
     private final UUID diagramId;
     private final String shareToken;
-    private final String role; // "view" hoặc "edit"
+    private final ShareRole role;
     private final Instant createdAt;
 
-    public DiagramShare(UUID id, UUID diagramId, String shareToken, String role, Instant createdAt) {
+    public DiagramShare(UUID id, UUID diagramId, String shareToken, ShareRole role, Instant createdAt) {
         this.id = Objects.requireNonNull(id, "id không được để trống");
         this.diagramId = Objects.requireNonNull(diagramId, "diagramId không được để trống");
         this.shareToken = Objects.requireNonNull(shareToken, "shareToken không được để trống");
-        this.role = validateRole(role);
+        this.role = Objects.requireNonNull(role, "role không được để trống");
         this.createdAt = createdAt != null ? createdAt : Instant.now();
     }
 
-    public static String validateRole(String role) {
-        if (role == null) {
-            throw new IllegalArgumentException("Quyền chia sẻ không được để trống");
-        }
-        String normalized = role.trim().toLowerCase();
-        if (!"view".equals(normalized) && !"edit".equals(normalized)) {
-            throw new IllegalArgumentException("Quyền chia sẻ chỉ có thể là 'view' hoặc 'edit'");
-        }
-        return normalized;
-    }
-
-    public DiagramShare withRole(String newRole) {
+    public DiagramShare withRole(ShareRole newRole) {
         return new DiagramShare(this.id, this.diagramId, this.shareToken, newRole, this.createdAt);
     }
 
@@ -51,7 +41,7 @@ public class DiagramShare {
         return shareToken;
     }
 
-    public String getRole() {
+    public ShareRole getRole() {
         return role;
     }
 

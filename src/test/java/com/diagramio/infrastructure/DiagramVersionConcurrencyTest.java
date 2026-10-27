@@ -58,7 +58,7 @@ class DiagramVersionConcurrencyTest {
         UUID diagramId = newDiagram(DATA_A).getId();
 
         List<DiagramVersion> saved = runConcurrently(20,
-                i -> () -> versionService.createVersion(diagramId, "save " + i, OWNER));
+                i -> () -> versionService.createVersion(diagramId, "save " + i, null, OWNER));
 
         List<Integer> numbers = saved.stream().map(DiagramVersion::versionNumber).sorted().toList();
         assertThat(numbers).isEqualTo(IntStream.rangeClosed(1, 20).boxed().toList());
@@ -67,7 +67,7 @@ class DiagramVersionConcurrencyTest {
     @Test
     void concurrentRestoresQueueUpAndEachBacksUpThePreviousState() throws Exception {
         Diagram diagram = newDiagram(DATA_A);
-        DiagramVersion snapshotA = versionService.createVersion(diagram.getId(), "A", OWNER);
+        DiagramVersion snapshotA = versionService.createVersion(diagram.getId(), "A", null, OWNER);
         diagram.setData(DATA_B);
         int versionBefore = diagramRepository.save(diagram).getVersion();
 

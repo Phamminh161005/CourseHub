@@ -1,4 +1,4 @@
-package com.diagramio.infrastructure.persistence.diagram;
+package com.diagramio.infrastructure.diagram;
 
 import java.util.UUID;
 import org.springframework.data.domain.Page;

@@ -1,13 +1,11 @@
-package com.diagramio.api;
+package com.diagramio.api.share;
 
-import com.diagramio.api.dto.share.CreateShareRequest;
-import com.diagramio.api.dto.share.ShareResponse;
-import com.diagramio.api.dto.share.UpdateShareRequest;
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.service.ShareService;
+import com.diagramio.api.CallerResolver;
+import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.share.DiagramShare;
+import com.diagramio.domain.share.ShareService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,7 +15,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,8 +27,6 @@ import java.util.stream.Collectors;
 @Tag(name = "Diagram Sharing", description = "Quản lý liên kết và quyền chia sẻ sơ đồ (Dành cho Chủ sở hữu)")
 public class DiagramShareController {
 
-    private static final UUID DEFAULT_SAMPLE_USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-
     private final ShareService shareService;
 
     public DiagramShareController(ShareService shareService) {
@@ -42,11 +37,9 @@ public class DiagramShareController {
     @Operation(summary = "Danh sách liên kết chia sẻ của sơ đồ", description = "Chỉ chủ sở hữu (Owner) mới có quyền truy cập.")
     public ResponseEntity<List<ShareResponse>> getShares(
             @PathVariable("id") UUID diagramId,
-            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId,
             Authentication authentication) {
 
-        UUID currentUserId = resolveUserId(headerUserId, authentication);
-        List<DiagramShare> shares = shareService.getShares(diagramId, currentUserId);
+        List<DiagramShare> shares = shareService.getShares(diagramId, CallerResolver.resolve(authentication));
         List<ShareResponse> response = shares.stream()
                 .map(ShareResponse::fromDomain)
                 .collect(Collectors.toList());
@@ -58,12 +51,11 @@ public class DiagramShareController {
     @Operation(summary = "Tạo liên kết chia sẻ mới", description = "Tạo liên kết chia sẻ với quyền view (chỉ xem) hoặc edit (chỉnh sửa). Chỉ chủ sở hữu mới có quyền.")
     public ResponseEntity<ShareResponse> createShare(
             @PathVariable("id") UUID diagramId,
-            @Valid @RequestBody CreateShareRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId,
+            @RequestBody CreateShareRequest request,
             Authentication authentication) {
 
-        UUID currentUserId = resolveUserId(headerUserId, authentication);
-        DiagramShare created = shareService.createShare(diagramId, request.role(), currentUserId);
+        DiagramShare created = shareService.createShare(diagramId, ShareRole.from(request.role()),
+                CallerResolver.resolve(authentication));
         return ResponseEntity.status(HttpStatus.CREATED).body(ShareResponse.fromDomain(created));
     }
 
@@ -72,12 +64,11 @@ public class DiagramShareController {
     public ResponseEntity<ShareResponse> updateShare(
             @PathVariable("id") UUID diagramId,
             @PathVariable("share_id") UUID shareId,
-            @Valid @RequestBody UpdateShareRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId,
+            @RequestBody UpdateShareRequest request,
             Authentication authentication) {
 
-        UUID currentUserId = resolveUserId(headerUserId, authentication);
-        DiagramShare updated = shareService.updateShareRole(diagramId, shareId, request.role(), currentUserId);
+        DiagramShare updated = shareService.updateShareRole(diagramId, shareId, ShareRole.from(request.role()),
+                CallerResolver.resolve(authentication));
         return ResponseEntity.ok(ShareResponse.fromDomain(updated));
     }
 
@@ -86,25 +77,9 @@ public class DiagramShareController {
     public ResponseEntity<Void> revokeShare(
             @PathVariable("id") UUID diagramId,
             @PathVariable("share_id") UUID shareId,
-            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId,
             Authentication authentication) {
 
-        UUID currentUserId = resolveUserId(headerUserId, authentication);
-        shareService.revokeShare(diagramId, shareId, currentUserId);
+        shareService.revokeShare(diagramId, shareId, CallerResolver.resolve(authentication));
         return ResponseEntity.noContent().build();
-    }
-
-    private UUID resolveUserId(UUID headerUserId, Authentication authentication) {
-        if (headerUserId != null) {
-            return headerUserId;
-        }
-        if (authentication != null && authentication.isAuthenticated()) {
-            try {
-                return UUID.fromString(authentication.getName());
-            } catch (IllegalArgumentException ignored) {
-                // Nếu authentication name không phải là UUID (ví dụ username), có thể dùng id mẫu trong lúc dev
-            }
-        }
-        return DEFAULT_SAMPLE_USER_ID;
     }
 }

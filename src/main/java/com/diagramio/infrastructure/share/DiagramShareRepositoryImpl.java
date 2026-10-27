@@ -1,10 +1,7 @@
-package com.diagramio.infrastructure.persistence.adapter;
+package com.diagramio.infrastructure.share;
 
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.repository.DiagramShareRepository;
-import com.diagramio.infrastructure.mapper.DiagramShareMapper;
-import com.diagramio.infrastructure.persistence.entity.DiagramShareEntity;
-import com.diagramio.infrastructure.persistence.repository.JpaDiagramShareRepository;
+import com.diagramio.domain.share.DiagramShare;
+import com.diagramio.domain.share.DiagramShareRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
