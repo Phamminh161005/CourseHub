@@ -1,5 +1,6 @@
 package com.diagramio.config;
 
+import com.diagramio.domain.TransactionRunner;
 import com.diagramio.domain.auth.AuthService;
 import com.diagramio.domain.auth.PasswordHasher;
 import com.diagramio.domain.auth.RefreshTokenRepository;
@@ -28,17 +29,15 @@ public class AuthConfig {
                                    RefreshTokenRepository refreshTokenRepository,
                                    PasswordHasher passwordHasher,
                                    TokenIssuer tokenIssuer,
+                                   TransactionRunner transactionRunner,
                                    JwtProperties jwtProperties,
-                                   Clock clock,
-                                   DomainTransactions domainTransactions) {
-        return domainTransactions.wrap(new AuthService(userRepository, refreshTokenRepository, passwordHasher,
-                tokenIssuer, Duration.ofDays(jwtProperties.refreshTokenDays()), clock));
+                                   Clock clock) {
+        return new AuthService(userRepository, refreshTokenRepository, passwordHasher, tokenIssuer,
+                transactionRunner, Duration.ofDays(jwtProperties.refreshTokenDays()), clock);
     }
 
     @Bean
-    public UserService userService(UserRepository userRepository,
-                                   PasswordHasher passwordHasher,
-                                   DomainTransactions domainTransactions) {
-        return domainTransactions.wrap(new UserService(userRepository, passwordHasher));
+    public UserService userService(UserRepository userRepository, PasswordHasher passwordHasher) {
+        return new UserService(userRepository, passwordHasher);
     }
 }

@@ -1,5 +1,6 @@
 package com.diagramio.domain.auth;
 
+import com.diagramio.domain.TransactionRunner;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.UnauthorizedException;
 import com.diagramio.domain.user.User;
@@ -25,6 +26,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordHasher passwordHasher;
     private final TokenIssuer tokenIssuer;
+    private final TransactionRunner transactionRunner;
     private final Duration refreshTokenTtl;
     private final Clock clock;
 
@@ -32,12 +34,14 @@ public class AuthService {
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordHasher passwordHasher,
                        TokenIssuer tokenIssuer,
+                       TransactionRunner transactionRunner,
                        Duration refreshTokenTtl,
                        Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordHasher = passwordHasher;
         this.tokenIssuer = tokenIssuer;
+        this.transactionRunner = transactionRunner;
         this.refreshTokenTtl = refreshTokenTtl;
         this.clock = clock;
     }
@@ -63,15 +67,20 @@ public class AuthService {
         return issueTokens(user);
     }
 
-    /** Đổi refresh token lấy cặp token mới; token cũ bị thu hồi ngay (rotation). */
+    /**
+     * Đổi refresh token lấy cặp token mới; token cũ bị thu hồi ngay (rotation).
+     * Thu hồi token cũ và lưu token mới nằm trong một transaction: lỗi giữa chừng thì không mất cả hai.
+     */
     public AuthTokens refresh(String rawRefreshToken) {
-        RefreshToken current = refreshTokenRepository.findByTokenHash(hash(rawRefreshToken))
-                .filter(t -> t.isUsable(clock.instant()))
-                .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
-        refreshTokenRepository.save(current.revoke());
-        User user = userRepository.findById(current.userId())
-                .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
-        return issueTokens(user);
+        return transactionRunner.inTransaction(() -> {
+            RefreshToken current = refreshTokenRepository.findByTokenHash(hash(rawRefreshToken))
+                    .filter(t -> t.isUsable(clock.instant()))
+                    .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
+            refreshTokenRepository.save(current.revoke());
+            User user = userRepository.findById(current.userId())
+                    .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
+            return issueTokens(user);
+        });
     }
 
     /**

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.diagramio.domain.TransactionRunner;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.UnauthorizedException;
 import com.diagramio.domain.user.User;
@@ -17,9 +18,11 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -33,6 +36,23 @@ class AuthServiceTest {
     private UserRepository userRepository;
     private RefreshTokenRepository refreshTokenRepository;
     private AuthService authService;
+
+    // Runner giả: chạy thẳng khối code, đồng thời ghi lại để kiểm tra transaction được dùng đúng chỗ
+    private int transactionsStarted;
+    private boolean insideTransaction;
+    private final List<Boolean> refreshTokenSavedInsideTransaction = new ArrayList<>();
+    private final TransactionRunner recordingTransaction = new TransactionRunner() {
+        @Override
+        public <T> T inTransaction(Supplier<T> work) {
+            transactionsStarted++;
+            insideTransaction = true;
+            try {
+                return work.get();
+            } finally {
+                insideTransaction = false;
+            }
+        }
+    };
 
     @BeforeEach
     void setUp() {
@@ -51,10 +71,13 @@ class AuthServiceTest {
         };
         TokenIssuer tokenIssuer = user -> "access-for-" + user.username();
         authService = new AuthService(userRepository, refreshTokenRepository, passwordHasher, tokenIssuer,
-                Duration.ofDays(7), Clock.fixed(NOW, ZoneOffset.UTC));
+                recordingTransaction, Duration.ofDays(7), Clock.fixed(NOW, ZoneOffset.UTC));
 
         when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(refreshTokenRepository.save(any())).thenAnswer(inv -> {
+            refreshTokenSavedInsideTransaction.add(insideTransaction);
+            return inv.getArgument(0);
+        });
     }
 
     // ---- register ----
@@ -139,6 +162,27 @@ class AuthServiceTest {
         assertThat(all.get(0).revoked()).isTrue();
         assertThat(all.get(1).tokenHash()).isEqualTo(AuthService.hash(tokens.refreshToken()));
         assertThat(all.get(1).revoked()).isFalse();
+    }
+
+    @Test
+    void refreshRevokesAndSavesInsideOneTransaction() {
+        storedToken("old-token", NOW.plusSeconds(60), false);
+        when(userRepository.findById(USER.id())).thenReturn(Optional.of(USER));
+
+        authService.refresh("old-token");
+
+        assertThat(transactionsStarted).isEqualTo(1);
+        // cả hai lần ghi (thu hồi token cũ, lưu token mới) đều nằm trong transaction
+        assertThat(refreshTokenSavedInsideTransaction).containsExactly(true, true);
+    }
+
+    @Test
+    void loginDoesNotNeedTransaction() {
+        when(userRepository.findByEmail("uet@gmail.com")).thenReturn(Optional.of(USER));
+
+        authService.login("uet@gmail.com", "secret");
+
+        assertThat(transactionsStarted).isZero(); // chỉ ghi một lần
     }
 
     @Test
