@@ -10,12 +10,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Repository
-public class DiagramShareRepositoryImpl implements DiagramShareRepository {
+public class DiagramShareRepositoryAdapter implements DiagramShareRepository {
 
-    private final JpaDiagramShareRepository jpaRepository;
+    private final DiagramShareJpaRepository jpaRepository;
     private final DiagramShareMapper mapper;
 
-    public DiagramShareRepositoryImpl(JpaDiagramShareRepository jpaRepository, DiagramShareMapper mapper) {
+    public DiagramShareRepositoryAdapter(DiagramShareJpaRepository jpaRepository, DiagramShareMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

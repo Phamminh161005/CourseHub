@@ -1,4 +1,4 @@
-package com.diagramio.api.auth;
+package com.diagramio.api.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

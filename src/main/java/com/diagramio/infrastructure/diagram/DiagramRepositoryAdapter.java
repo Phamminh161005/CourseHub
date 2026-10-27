@@ -7,16 +7,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class DiagramRepositoryImpl implements DiagramRepository {
+public class DiagramRepositoryAdapter implements DiagramRepository {
 
-    private final SpringDataDiagramJpaRepository repository;
+    private final DiagramJpaRepository repository;
     private final DiagramMapper mapper;
 
-    public DiagramRepositoryImpl(SpringDataDiagramJpaRepository repository, DiagramMapper mapper) {
+    public DiagramRepositoryAdapter(DiagramJpaRepository repository, DiagramMapper mapper) {
         this.repository = repository;
         this.mapper = mapper;
     }
@@ -69,17 +70,17 @@ public class DiagramRepositoryImpl implements DiagramRepository {
         repository.deleteById(id);
     }
 
-    private org.springframework.data.domain.Page<DiagramEntity> findPage(
+    private Page<DiagramEntity> findPage(
             UUID ownerId, String diagramType, String title, PageRequest pageRequest) {
         boolean hasDiagramType = diagramType != null && !diagramType.isBlank();
         boolean hasTitle = title != null && !title.isBlank();
 
         if (hasDiagramType && hasTitle) {
-            return repository.findByOwnerIdAndDiagramTypeContainingAndTitleContainingIgnoreCase(
+            return repository.findByOwnerIdAndDiagramTypeAndTitleContainingIgnoreCase(
                     ownerId, diagramType, title, pageRequest);
         }
         if (hasDiagramType) {
-            return repository.findByOwnerIdAndDiagramTypeContaining(ownerId, diagramType, pageRequest);
+            return repository.findByOwnerIdAndDiagramType(ownerId, diagramType, pageRequest);
         }
         if (hasTitle) {
             return repository.findByOwnerIdAndTitleContainingIgnoreCase(ownerId, title, pageRequest);

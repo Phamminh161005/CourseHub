@@ -2,13 +2,16 @@ package com.diagramio.api.version;
 
 import com.diagramio.api.CallerResolver;
 import com.diagramio.api.dto.ErrorResponse;
+import com.diagramio.api.version.dto.CreateVersionRequest;
+import com.diagramio.api.version.dto.DiagramVersionResponse;
+import com.diagramio.api.version.dto.DiagramVersionSummaryResponse;
+import com.diagramio.api.version.dto.RestoreVersionResponse;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -27,7 +30,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequestMapping("/api/v1/diagrams/{diagramId}/versions")
 @Tag(name = "Diagram versions", description = "Lịch sử phiên bản (snapshot bất biến) và khôi phục sơ đồ")
-@SecurityRequirement(name = "bearerAuth")
 @ApiResponse(responseCode = "401", description = "Chưa đăng nhập",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 @ApiResponse(responseCode = "403", description = "Không đủ quyền với sơ đồ",

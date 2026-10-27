@@ -34,7 +34,7 @@ public enum ShareRole {
                 }
             }
         }
-        throw new InvalidInputException("Quyền chia sẻ chỉ có thể là "
+        throw new InvalidInputException("role must be one of "
                 + Arrays.stream(values()).map(r -> "'" + r.value + "'").toList());
     }
 }

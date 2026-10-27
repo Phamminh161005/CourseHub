@@ -79,7 +79,7 @@ class ShareServiceTest {
 
         assertThatThrownBy(() -> shareService.getShares(diagramId, Caller.user(otherUserId)))
                 .isInstanceOf(ForbiddenException.class)
-                .hasMessageContaining("Chỉ chủ sở hữu");
+                .hasMessageContaining("Only the diagram owner");
     }
 
     @Test
@@ -171,7 +171,7 @@ class ShareServiceTest {
 
         assertThatThrownBy(() -> shareService.getDiagramByShareToken("invalid_token"))
                 .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("không tồn tại");
+                .hasMessageContaining("does not exist");
     }
 
     @Test

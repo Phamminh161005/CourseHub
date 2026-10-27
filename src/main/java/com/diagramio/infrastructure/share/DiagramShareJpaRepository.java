@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface JpaDiagramShareRepository extends JpaRepository<DiagramShareEntity, UUID> {
+public interface DiagramShareJpaRepository extends JpaRepository<DiagramShareEntity, UUID> {
 
     List<DiagramShareEntity> findByDiagramId(UUID diagramId);
 

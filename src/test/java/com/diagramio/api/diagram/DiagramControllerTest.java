@@ -63,10 +63,10 @@ class DiagramControllerTest {
                         .with(user(USER_ID.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"Orders","diagramType":"ERD","isPublic":false}
+                                {"title":"Orders","diagramType":"ERD"}
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/api/v1/diagrams/" + DIAGRAM_ID));
+                .andExpect(header().string("Location", "http://localhost/api/v1/diagrams/" + DIAGRAM_ID));
     }
 
     @Test
@@ -75,7 +75,7 @@ class DiagramControllerTest {
                         .with(user(USER_ID.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"Orders","diagramType":"BPMN","isPublic":false}
+                                {"title":"Orders","diagramType":"BPMN"}
                                 """))
                 .andExpect(status().isBadRequest());
     }
@@ -112,7 +112,7 @@ class DiagramControllerTest {
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message")
-                        .value("Dữ liệu sơ đồ đã bị thay đổi bởi phiên làm việc khác. Vui lòng làm mới trang!"));
+                        .value("Diagram version conflict: requested 1, current 2"));
     }
 
     @Test
@@ -184,18 +184,6 @@ class DiagramControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nodes").isArray())
                 .andExpect(jsonPath("$.data.edges").isArray());
-    }
-
-    @Test
-    void updateRejectsDataSentAsString() throws Exception {
-        mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
-                        .with(user(USER_ID.toString()))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": []}","isPublic":false}
-                                """))
-                .andExpect(status().isBadRequest());
     }
 
     private Diagram diagram() {

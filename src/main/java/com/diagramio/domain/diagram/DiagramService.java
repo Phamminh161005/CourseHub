@@ -1,21 +1,25 @@
 package com.diagramio.domain.diagram;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 /** Domain rules for diagram management. This class intentionally has no framework dependency. */
 public class DiagramService {
 
     public static final String DEFAULT_DATA = "{\"nodes\": [], \"edges\": []}";
+    public static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_DATA_BYTES = 2 * 1024 * 1024;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String UML = "UML";
     private static final String ERD = "ERD";
 
@@ -133,8 +137,8 @@ public class DiagramService {
     }
 
     private void validatePage(int page, int size) {
-        if (page < 0 || size < 1) {
-            throw new InvalidInputException("page must be non-negative and size must be positive");
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new InvalidInputException("page must be non-negative and size must be between 1 and " + MAX_PAGE_SIZE);
         }
     }
 
@@ -142,8 +146,7 @@ public class DiagramService {
         return value == null || value.isBlank() ? "" : value.trim();
     }
 
-    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
-
+    /** data phải là object JSON có mảng "nodes" và "edges", tối đa 2 MB. */
     private void validateJson(String data) {
         if (data == null || data.isBlank()) {
             throw new InvalidInputException("data must be valid JSON");
@@ -151,143 +154,14 @@ public class DiagramService {
         if (data.getBytes(StandardCharsets.UTF_8).length > MAX_DATA_BYTES) {
             throw new InvalidInputException("data must not exceed 2 MB");
         }
+        JsonNode root;
         try {
-             OBJECT_MAPPER.readTree(data);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-        throw new InvalidInputException("data must be valid JSON");
+            root = OBJECT_MAPPER.readTree(data);
+        } catch (JsonProcessingException e) {
+            throw new InvalidInputException("data must be valid JSON");
         }
-    }
-
-    private static final class JsonValidator {
-        private final String input;
-        private int position;
-
-        private JsonValidator(String input) {
-            this.input = input;
-        }
-
-        private void validate() {
-            skipWhitespace();
-            parseValue();
-            skipWhitespace();
-            if (position != input.length()) {
-                throw new IllegalArgumentException();
-            }
-        }
-
-        private void parseValue() {
-            skipWhitespace();
-            if (position >= input.length()) {
-                throw new IllegalArgumentException();
-            }
-            char value = input.charAt(position);
-            if (value == '{') parseObject();
-            else if (value == '[') parseArray();
-            else if (value == '"') parseString();
-            else if (value == 't') parseLiteral("true");
-            else if (value == 'f') parseLiteral("false");
-            else if (value == 'n') parseLiteral("null");
-            else parseNumber();
-        }
-
-        private void parseObject() {
-            position++;
-            skipWhitespace();
-            if (consume('}')) return;
-            while (true) {
-                parseString();
-                skipWhitespace();
-                require(':');
-                parseValue();
-                skipWhitespace();
-                if (consume('}')) return;
-                require(',');
-            }
-        }
-
-        private void parseArray() {
-            position++;
-            skipWhitespace();
-            if (consume(']')) return;
-            while (true) {
-                parseValue();
-                skipWhitespace();
-                if (consume(']')) return;
-                require(',');
-            }
-        }
-
-        private void parseString() {
-            require('"');
-            while (position < input.length()) {
-                char value = input.charAt(position++);
-                if (value == '"') return;
-                if (value == '\\') {
-                    if (position >= input.length()) throw new IllegalArgumentException();
-                    char escaped = input.charAt(position++);
-                    if (escaped == 'u') {
-                        for (int i = 0; i < 4; i++) {
-                            if (position >= input.length() || Character.digit(input.charAt(position++), 16) < 0) {
-                                throw new IllegalArgumentException();
-                            }
-                        }
-                    } else if ("\"\\/bfnrt".indexOf(escaped) < 0) {
-                        throw new IllegalArgumentException();
-                    }
-                } else if (value < 0x20) {
-                    throw new IllegalArgumentException();
-                }
-            }
-            throw new IllegalArgumentException();
-        }
-
-        private void parseNumber() {
-            int start = position;
-            consume('-');
-            if (consume('0')) {
-                // A leading zero may not be followed by another digit.
-                if (position < input.length() && Character.isDigit(input.charAt(position))) {
-                    throw new IllegalArgumentException();
-                }
-            } else {
-                requireDigits();
-            }
-            if (consume('.')) requireDigits();
-            if (position < input.length() && (input.charAt(position) == 'e' || input.charAt(position) == 'E')) {
-                position++;
-                if (position < input.length() && (input.charAt(position) == '+' || input.charAt(position) == '-')) {
-                    position++;
-                }
-                requireDigits();
-            }
-            if (start == position) throw new IllegalArgumentException();
-        }
-
-        private void parseLiteral(String literal) {
-            if (!input.startsWith(literal, position)) throw new IllegalArgumentException();
-            position += literal.length();
-        }
-
-        private void requireDigits() {
-            int start = position;
-            while (position < input.length() && Character.isDigit(input.charAt(position))) position++;
-            if (start == position) throw new IllegalArgumentException();
-        }
-
-        private void skipWhitespace() {
-            while (position < input.length() && Character.isWhitespace(input.charAt(position))) position++;
-        }
-
-        private boolean consume(char expected) {
-            if (position < input.length() && input.charAt(position) == expected) {
-                position++;
-                return true;
-            }
-            return false;
-        }
-
-        private void require(char expected) {
-            if (!consume(expected)) throw new IllegalArgumentException();
+        if (root == null || !root.isObject() || !root.path("nodes").isArray() || !root.path("edges").isArray()) {
+            throw new InvalidInputException("data must be a JSON object with \"nodes\" and \"edges\" arrays");
         }
     }
 }

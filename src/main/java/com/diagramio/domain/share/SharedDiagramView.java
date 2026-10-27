@@ -24,11 +24,11 @@ public class SharedDiagramView {
     public SharedDiagramView(UUID diagramId, String title, String diagramType, String data,
                              ShareRole role, int version, boolean isPublic,
                              Instant createdAt, Instant updatedAt) {
-        this.diagramId = Objects.requireNonNull(diagramId, "diagramId không được để trống");
-        this.title = Objects.requireNonNull(title, "title không được để trống");
-        this.diagramType = Objects.requireNonNull(diagramType, "diagramType không được để trống");
+        this.diagramId = Objects.requireNonNull(diagramId, "diagramId must not be null");
+        this.title = Objects.requireNonNull(title, "title must not be null");
+        this.diagramType = Objects.requireNonNull(diagramType, "diagramType must not be null");
         this.data = data;
-        this.role = Objects.requireNonNull(role, "role không được để trống");
+        this.role = Objects.requireNonNull(role, "role must not be null");
         this.version = version;
         this.isPublic = isPublic;
         this.createdAt = createdAt;
