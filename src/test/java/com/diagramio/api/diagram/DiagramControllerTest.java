@@ -40,6 +40,8 @@ class DiagramControllerTest {
 
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID DIAGRAM_ID = UUID.randomUUID();
+    // data gửi lên là object JSON; controller chuyển thành chuỗi gọn trước khi xuống domain
+    private static final String SENT_DATA = "{\"nodes\":[],\"edges\":[]}";
 
     @Autowired
     private MockMvc mockMvc;
@@ -81,7 +83,7 @@ class DiagramControllerTest {
     @Test
     void updateReturns200ForValidRequest() throws Exception {
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq("ERD"),
-                eq(DiagramService.DEFAULT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
+                eq(SENT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
                 .thenReturn(diagram());
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -89,7 +91,7 @@ class DiagramControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": [], \\"edges\\": []}","isPublic":false}
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(DIAGRAM_ID.toString()));
@@ -98,7 +100,7 @@ class DiagramControllerTest {
     @Test
     void updateReturns409ForVersionConflict() throws Exception {
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq("ERD"),
-                eq(DiagramService.DEFAULT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
+                eq(SENT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
                 .thenThrow(new OptimisticLockConflictException(DIAGRAM_ID, 1, 2));
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -106,7 +108,7 @@ class DiagramControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": [], \\"edges\\": []}","isPublic":false}
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message")
@@ -137,7 +139,7 @@ class DiagramControllerTest {
         Caller editor = Caller.shareToken(DIAGRAM_ID, ShareRole.EDIT);
         when(shareService.resolveShareToken("edit-token")).thenReturn(Optional.of(editor));
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq("ERD"),
-                eq(DiagramService.DEFAULT_DATA), eq(false), eq(editor), eq(1)))
+                eq(SENT_DATA), eq(false), eq(editor), eq(1)))
                 .thenReturn(diagram());
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -145,7 +147,7 @@ class DiagramControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": [], \\"edges\\": []}","isPublic":false}
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
                                 """))
                 .andExpect(status().isOk());
     }
@@ -157,7 +159,7 @@ class DiagramControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Orders","diagramType":"ERD","version":1,
-                                 "data":"{\\"nodes\\": [], \\"edges\\": []}","isPublic":false}
+                                 "data":{"nodes": [], "edges": []},"isPublic":false}
                                 """))
                 .andExpect(status().isUnauthorized());
     }
@@ -174,6 +176,27 @@ class DiagramControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void responseDataIsJsonObject() throws Exception {
+        when(diagramService.getDiagramById(DIAGRAM_ID, Caller.anonymous())).thenReturn(diagram());
+
+        mockMvc.perform(get("/api/v1/diagrams/{id}", DIAGRAM_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nodes").isArray())
+                .andExpect(jsonPath("$.data.edges").isArray());
+    }
+
+    @Test
+    void updateRejectsDataSentAsString() throws Exception {
+        mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
+                        .with(user(USER_ID.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Orders","diagramType":"ERD","version":1,
+                                 "data":"{\\"nodes\\": []}","isPublic":false}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
 
     private Diagram diagram() {
         return new Diagram(DIAGRAM_ID, "Orders", "ERD", DiagramService.DEFAULT_DATA, 1,

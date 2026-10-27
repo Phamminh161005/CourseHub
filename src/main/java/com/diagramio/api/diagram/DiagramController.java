@@ -8,6 +8,7 @@ import com.diagramio.api.diagram.dto.PageResponse;
 import com.diagramio.api.diagram.dto.UpdateDiagramRequest;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramService;
+import com.diagramio.domain.exception.InvalidInputException;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -79,8 +80,11 @@ public class DiagramController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateDiagramRequest request,
             Authentication authentication) {
+        if (!request.data().isObject()) {
+            throw new InvalidInputException("data must be a JSON object");
+        }
         return DiagramResponse.from(diagramService.updateDiagram(
-                id, request.title(), request.diagramType(), request.data(), request.isPublic(),
+                id, request.title(), request.diagramType(), request.data().toString(), request.isPublic(),
                 CallerResolver.resolve(authentication), request.version()));
     }
 
