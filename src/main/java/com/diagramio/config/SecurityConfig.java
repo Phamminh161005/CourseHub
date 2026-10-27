@@ -6,8 +6,10 @@ import com.diagramio.infrastructure.security.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,8 +21,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * Bảo mật: stateless, endpoint công khai được mở, còn lại phải xác thực.
- * Người dùng được xác định bởi các filter (JWT; sau này thêm X-Share-Token); filter không tự từ chối,
- * request chưa xác thực vào endpoint cần đăng nhập sẽ nhận 401 dạng JSON từ entry point bên dưới.
+ * /api/v1/shares/** công khai để xem sơ đồ qua link chia sẻ; GET /api/v1/diagrams/* công khai cho sơ đồ public.
+ * Người dùng được xác định bởi filter JWT; filter không tự từ chối, request chưa xác thực vào endpoint
+ * cần đăng nhập sẽ nhận 401 dạng JSON.
  */
 @Configuration
 public class SecurityConfig {
@@ -30,6 +33,7 @@ public class SecurityConfig {
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh-token",
+            "/api/v1/shares/**",
             "/v3/api-docs/**",
             "/swagger-ui.html",
             "/swagger-ui/**"
@@ -38,16 +42,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtTokenProvider jwtTokenProvider,
-                                                   ObjectMapper objectMapper) throws Exception {
+                                                   ObjectMapper objectMapper,
+                                                   ObjectProvider<UatHeaderAuthenticationFilter> uatFilter)
+            throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(e -> e.authenticationEntryPoint(jsonUnauthorizedEntryPoint(objectMapper)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/diagrams/*").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class);
+        // TODO bước 0: bỏ filter UAT (file chỉ có trên máy Bảo)
+        UatHeaderAuthenticationFilter filter = uatFilter.getIfAvailable();
+        if (filter != null) {
+            http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+        }
         return http.build();
     }
 
