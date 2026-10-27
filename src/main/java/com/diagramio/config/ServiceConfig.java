@@ -1,6 +1,6 @@
 package com.diagramio.config;
 
-import com.diagramio.domain.repository.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramRepository;
 import com.diagramio.domain.repository.DiagramShareRepository;
 import com.diagramio.domain.service.ShareService;
 import org.springframework.context.annotation.Bean;
