@@ -3,7 +3,7 @@ package com.diagramio.infrastructure.persistence.diagram;
 import com.diagramio.domain.diagram.Diagram;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("legacyDiagramMapper")
 public class DiagramMapper {
 
     public Diagram toDomain(DiagramEntity entity) {

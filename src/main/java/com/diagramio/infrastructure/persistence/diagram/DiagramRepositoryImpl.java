@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
-@Repository
+@Repository("legacyDiagramRepository")
 public class DiagramRepositoryImpl implements DiagramRepository {
 
     private final SpringDataDiagramJpaRepository repository;

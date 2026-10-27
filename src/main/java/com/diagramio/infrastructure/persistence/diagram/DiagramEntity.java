@@ -13,7 +13,7 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Entity
+@Entity(name = "LegacyDiagramEntity")
 @Table(name = "diagrams")
 public class DiagramEntity {
 
