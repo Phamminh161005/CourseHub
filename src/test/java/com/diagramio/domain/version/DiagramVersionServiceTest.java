@@ -76,6 +76,22 @@ class DiagramVersionServiceTest {
     }
 
     @Test
+    void createAndRestoreLockTheDiagramBeforeReadingIt() {
+        UUID versionId = UUID.randomUUID();
+        when(versionRepository.findByIdAndDiagramId(versionId, diagramId))
+                .thenReturn(Optional.of(version(versionId, 1, OLD_DATA)));
+
+        service.createVersion(diagramId, "x", Caller.user(ownerId));
+        service.restore(diagramId, versionId, Caller.user(ownerId));
+
+        InOrder order = inOrder(versionRepository, diagramRepository);
+        order.verify(versionRepository).lockDiagram(diagramId);
+        order.verify(diagramRepository).findById(diagramId);
+        order.verify(versionRepository).lockDiagram(diagramId);
+        order.verify(diagramRepository).findById(diagramId);
+    }
+
+    @Test
     void firstSnapshotGetsNumberOne() {
         when(versionRepository.maxVersionNumber(diagramId)).thenReturn(0);
 
@@ -185,7 +201,8 @@ class DiagramVersionServiceTest {
         assertThat(backup.getValue().note()).isEqualTo("Auto backup before restoring version 2");
 
         assertThat(result.diagram().getData()).isEqualTo(OLD_DATA);
-        assertThat(result.diagram().getVersion()).isEqualTo(6);
+        // Gửi đúng version đã đọc; tầng persistence (@Version) đối chiếu và tăng lên 1
+        assertThat(result.diagram().getVersion()).isEqualTo(5);
         assertThat(result.diagram().getUpdatedAt()).isEqualTo(NOW);
         assertThat(result.diagram().getUpdatedBy()).isEqualTo(ownerId);
         assertThat(result.backup()).isEqualTo(backup.getValue());

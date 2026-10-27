@@ -14,7 +14,8 @@ public class DiagramVersionConfig {
     @Bean
     public DiagramVersionService diagramVersionService(DiagramRepository diagramRepository,
                                                        DiagramVersionRepository versionRepository,
-                                                       TransactionRunner transactionRunner) {
-        return new DiagramVersionService(diagramRepository, versionRepository, transactionRunner, Clock.systemUTC());
+                                                       TransactionRunner transactionRunner,
+                                                       Clock clock) {
+        return new DiagramVersionService(diagramRepository, versionRepository, transactionRunner, clock);
     }
 }

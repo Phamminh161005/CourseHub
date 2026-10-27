@@ -1,10 +1,7 @@
-package com.diagramio.api;
+package com.diagramio.api.version;
 
-import com.diagramio.api.dto.CreateVersionRequest;
-import com.diagramio.api.dto.DiagramVersionResponse;
-import com.diagramio.api.dto.DiagramVersionSummaryResponse;
+import com.diagramio.api.CallerResolver;
 import com.diagramio.api.dto.ErrorResponse;
-import com.diagramio.api.dto.RestoreVersionResponse;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import io.swagger.v3.oas.annotations.Operation;

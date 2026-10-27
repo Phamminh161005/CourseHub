@@ -7,8 +7,9 @@ import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.version.DiagramVersion;
-import com.diagramio.infrastructure.diagram.JpaDiagramRepository;
-import com.diagramio.infrastructure.version.JpaDiagramVersionRepository;
+import com.diagramio.infrastructure.persistence.diagram.DiagramMapper;
+import com.diagramio.infrastructure.persistence.diagram.DiagramRepositoryImpl;
+import com.diagramio.infrastructure.version.DiagramVersionRepositoryAdapter;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -29,7 +30,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaDiagramRepository.class, JpaDiagramVersionRepository.class})
+@Import({DiagramRepositoryImpl.class, DiagramMapper.class, DiagramVersionRepositoryAdapter.class})
 @Testcontainers(disabledWithoutDocker = true)
 class JpaRepositoriesIntegrationTest {
 
@@ -42,10 +43,10 @@ class JpaRepositoriesIntegrationTest {
     private static final String DATA = "{\"nodes\": [{\"id\": \"n1\"}], \"edges\": []}";
 
     @Autowired
-    private JpaDiagramRepository diagramRepository;
+    private DiagramRepositoryImpl diagramRepository;
 
     @Autowired
-    private JpaDiagramVersionRepository versionRepository;
+    private DiagramVersionRepositoryAdapter versionRepository;
 
     @Test
     void savesAndReadsSnapshotsNewestFirst() {
@@ -90,10 +91,10 @@ class JpaRepositoriesIntegrationTest {
     void updateWithExpectedVersionSucceeds() {
         Diagram diagram = newDiagram();
         diagram.setData("{\"nodes\": [], \"edges\": [{\"id\": \"e1\"}]}");
-        diagram.setVersion(2);
 
-        diagramRepository.save(diagram);
+        Diagram saved = diagramRepository.save(diagram);
 
+        assertThat(saved.getVersion()).isEqualTo(2);
         Diagram stored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(stored.getVersion()).isEqualTo(2);
         assertThat(stored.getData()).contains("\"e1\"");
@@ -102,16 +103,16 @@ class JpaRepositoriesIntegrationTest {
     @Test
     void staleUpdateIsRejectedAndRowIsUnchanged() {
         Diagram diagram = newDiagram();
-        // Người khác đã lưu version 2 trước
+        // Người khác đã lưu trước => CSDL lên version 2
         Diagram other = diagramRepository.findById(diagram.getId()).orElseThrow();
-        other.setVersion(2);
+        other.setTitle("Renamed by someone else");
         diagramRepository.save(other);
 
-        diagram.setData("{\"nodes\": [], \"edges\": []}");
-        diagram.setVersion(2); // vẫn tưởng CSDL đang ở version 1
+        diagram.setData("{\"nodes\": [], \"edges\": []}"); // vẫn giữ version 1 đã đọc
 
         assertThatThrownBy(() -> diagramRepository.save(diagram))
-                .isInstanceOf(OptimisticLockConflictException.class);
+                .isInstanceOf(OptimisticLockConflictException.class)
+                .hasMessage("Diagram version conflict: requested 1, current 2");
         Diagram stored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(stored.getVersion()).isEqualTo(2);
         assertThat(stored.getData()).contains("\"n1\"");

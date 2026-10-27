@@ -7,15 +7,16 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 /**
- * Đổi Authentication (do filter xác thực đặt vào) thành Caller của domain.
- * Filter X-Share-Token đặt sẵn principal là Caller; filter JWT dùng subject là UUID người dùng.
+ * Đổi Authentication do filter xác thực đặt vào thành Caller của domain.
+ * Hiện chỉ có filter JWT (principal là UUID người dùng). Khi có filter X-Share-Token (dự kiến),
+ * filter đó đặt sẵn principal là Caller và được dùng nguyên.
  */
-final class CallerResolver {
+public final class CallerResolver {
 
     private CallerResolver() {
     }
 
-    static Caller resolve(Authentication authentication) {
+    public static Caller resolve(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()
                 || authentication instanceof AnonymousAuthenticationToken) {
             throw new UnauthorizedException("Authentication required");
