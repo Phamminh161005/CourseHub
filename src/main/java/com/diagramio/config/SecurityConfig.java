@@ -6,7 +6,6 @@ import com.diagramio.infrastructure.security.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -42,8 +41,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtTokenProvider jwtTokenProvider,
-                                                   ObjectMapper objectMapper,
-                                                   ObjectProvider<UatHeaderAuthenticationFilter> uatFilter)
+                                                   ObjectMapper objectMapper)
             throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -55,11 +53,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class);
-        // TODO bước 0: bỏ filter UAT (file chỉ có trên máy Bảo)
-        UatHeaderAuthenticationFilter filter = uatFilter.getIfAvailable();
-        if (filter != null) {
-            http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
-        }
         return http.build();
     }
 
