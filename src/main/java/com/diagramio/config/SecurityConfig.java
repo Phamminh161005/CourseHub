@@ -13,8 +13,8 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.beans.factory.ObjectProvider;
 
 /**
- * Khung bảo mật tối thiểu: stateless, endpoint công khai được mở, còn lại phải xác thực.
- * Filter JWT / X-Share-Token sẽ được thêm vào chain này ở phần xác thực người dùng.
+ * Khung bảo mật: stateless, endpoint công khai được mở, còn lại phải xác thực.
+ * Endpoint /api/v1/shares/** là public để người dùng có thể xem sơ đồ qua link chia sẻ mà không cần đăng nhập.
  */
 @Configuration
 public class SecurityConfig {
@@ -22,6 +22,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/health",
             "/api/v1/auth/**",
+            "/api/v1/shares/**",
             "/v3/api-docs/**",
             "/swagger-ui.html",
             "/swagger-ui/**"
