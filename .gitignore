@@ -34,7 +34,6 @@ yarn-error.log*
 private/
 
 # 7. Công cụ chạy UAT cục bộ
-Dockerfile
 src/main/java/com/diagramio/cli/
 src/main/java/com/diagramio/config/UatHeaderAuthenticationFilter.java
 src/main/resources/db/migration/V3__add_diagram_updated_by.sql

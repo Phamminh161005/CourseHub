@@ -21,6 +21,31 @@ services:
     networks:
       - diagramio
 
+  app:
+    build: .
+    image: diagramio-app
+    container_name: diagramio_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Trong mạng Docker, DB được gọi bằng tên service "postgres" và cổng bên trong 5432
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-diagram_app}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secretpassword}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-please-change-it-32chars}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - diagramio
+
 volumes:
   postgres_data:
 
