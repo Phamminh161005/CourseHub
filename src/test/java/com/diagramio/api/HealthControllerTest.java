@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.diagramio.config.SecurityConfig;
+import com.diagramio.domain.share.ShareService;
 import com.diagramio.infrastructure.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ class HealthControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
+
+    @MockitoBean
+    private ShareService shareService; // filter X-Share-Token cần; mặc định coi mọi token là không hợp lệ
 
     @Test
     void healthIsPublic() throws Exception {

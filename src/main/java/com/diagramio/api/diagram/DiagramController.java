@@ -1,5 +1,6 @@
 package com.diagramio.api.diagram;
 
+import com.diagramio.api.CallerResolver;
 import com.diagramio.api.diagram.dto.CreateDiagramRequest;
 import com.diagramio.api.diagram.dto.DiagramResponse;
 import com.diagramio.api.diagram.dto.DiagramSummaryResponse;
@@ -7,7 +8,6 @@ import com.diagramio.api.diagram.dto.PageResponse;
 import com.diagramio.api.diagram.dto.UpdateDiagramRequest;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramService;
-import com.diagramio.domain.exception.UnauthorizedException;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -71,8 +71,7 @@ public class DiagramController {
 
     @GetMapping("/{id}")
     public DiagramResponse getById(@PathVariable UUID id, Authentication authentication) {
-        UUID userId = authentication == null ? null : currentUserId(authentication);
-        return DiagramResponse.from(diagramService.getDiagramById(id, userId, false));
+        return DiagramResponse.from(diagramService.getDiagramById(id, CallerResolver.resolveOrAnonymous(authentication)));
     }
 
     @PutMapping("/{id}")
@@ -80,27 +79,19 @@ public class DiagramController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateDiagramRequest request,
             Authentication authentication) {
-        UUID userId = currentUserId(authentication);
         return DiagramResponse.from(diagramService.updateDiagram(
                 id, request.title(), request.diagramType(), request.data(), request.isPublic(),
-                userId, request.version()));
+                CallerResolver.resolve(authentication), request.version()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id, Authentication authentication) {
-        diagramService.deleteDiagram(id, currentUserId(authentication));
+        diagramService.deleteDiagram(id, CallerResolver.resolve(authentication));
         return ResponseEntity.noContent().build();
     }
 
     private UUID currentUserId(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null) {
-            throw new UnauthorizedException("Authentication is required");
-        }
-        try {
-            return UUID.fromString(authentication.getName());
-        } catch (IllegalArgumentException exception) {
-            throw new UnauthorizedException("Authenticated user id is invalid");
-        }
+        return CallerResolver.requireUserId(authentication);
     }
 
     private <T> PageResponse<DiagramSummaryResponse> pageResponse(

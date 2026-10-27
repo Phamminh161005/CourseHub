@@ -1,8 +1,10 @@
 package com.diagramio.config;
 
 import com.diagramio.api.dto.ErrorResponse;
+import com.diagramio.domain.share.ShareService;
 import com.diagramio.infrastructure.security.JwtAuthenticationFilter;
 import com.diagramio.infrastructure.security.JwtTokenProvider;
+import com.diagramio.infrastructure.security.ShareTokenAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -21,8 +23,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Bảo mật: stateless, endpoint công khai được mở, còn lại phải xác thực.
  * /api/v1/shares/** công khai để xem sơ đồ qua link chia sẻ; GET /api/v1/diagrams/* công khai cho sơ đồ public.
- * Người dùng được xác định bởi filter JWT; filter không tự từ chối, request chưa xác thực vào endpoint
- * cần đăng nhập sẽ nhận 401 dạng JSON.
+ * Người gọi được xác định bởi filter JWT rồi filter X-Share-Token (link chia sẻ); hai filter không tự
+ * từ chối, request chưa xác thực vào endpoint cần đăng nhập sẽ nhận 401 dạng JSON.
  */
 @Configuration
 public class SecurityConfig {
@@ -41,6 +43,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtTokenProvider jwtTokenProvider,
+                                                   ShareService shareService,
                                                    ObjectMapper objectMapper)
             throws Exception {
         http
@@ -52,7 +55,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/diagrams/*").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
-                        UsernamePasswordAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new ShareTokenAuthenticationFilter(shareService), JwtAuthenticationFilter.class);
         return http.build();
     }
 

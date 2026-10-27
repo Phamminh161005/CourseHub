@@ -15,6 +15,7 @@ import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.user.User;
 import com.diagramio.domain.user.UserService;
+import com.diagramio.domain.share.ShareService;
 import com.diagramio.infrastructure.security.JwtTokenProvider;
 import java.time.Instant;
 import java.util.List;
@@ -46,6 +47,9 @@ class UserControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
+
+    @MockitoBean
+    private ShareService shareService; // filter X-Share-Token cần; mặc định coi mọi token là không hợp lệ
 
     // ---- qua filter JWT thật (header Authorization) ----
 

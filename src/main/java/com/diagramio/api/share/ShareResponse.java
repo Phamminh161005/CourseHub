@@ -26,7 +26,7 @@ public record ShareResponse(
                 share.getId(),
                 share.getDiagramId(),
                 share.getShareToken(),
-                share.getRole(),
+                share.getRole().value(),
                 share.getCreatedAt()
         );
     }

@@ -54,4 +54,24 @@ class CallerTest {
         assertThat(stranger.canViewHistory(diagram)).isFalse();
         assertThat(stranger.canEdit(diagram)).isFalse();
     }
+
+    @Test
+    void canViewPrivateDiagramOnlyWithAccess() {
+        assertThat(Caller.anonymous().canView(diagram)).isFalse();
+        assertThat(Caller.user(UUID.randomUUID()).canView(diagram)).isFalse();
+        assertThat(Caller.user(ownerId).canView(diagram)).isTrue();
+        assertThat(Caller.shareToken(diagram.getId(), ShareRole.VIEW).canView(diagram)).isTrue();
+    }
+
+    @Test
+    void anyoneCanViewPublicDiagram() {
+        diagram.setPublic(true);
+        assertThat(Caller.anonymous().canView(diagram)).isTrue();
+    }
+
+    @Test
+    void ownerOpeningOwnViewLinkKeepsOwnerRights() {
+        Caller ownerWithViewLink = new Caller(ownerId, diagram.getId(), ShareRole.VIEW);
+        assertThat(ownerWithViewLink.canEdit(diagram)).isTrue();
+    }
 }

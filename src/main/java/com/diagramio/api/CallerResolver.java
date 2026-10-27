@@ -8,8 +8,8 @@ import org.springframework.security.core.Authentication;
 
 /**
  * Đổi Authentication do filter xác thực đặt vào thành Caller của domain.
- * Hiện chỉ có filter JWT (principal là UUID người dùng). Khi có filter X-Share-Token (dự kiến),
- * filter đó đặt sẵn principal là Caller và được dùng nguyên.
+ * Filter JWT đặt principal là UUID người dùng; filter X-Share-Token đặt sẵn principal là Caller
+ * và được dùng nguyên.
  */
 public final class CallerResolver {
 
@@ -17,8 +17,7 @@ public final class CallerResolver {
     }
 
     public static Caller resolve(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
+        if (!isAuthenticated(authentication)) {
             throw new UnauthorizedException("Authentication required");
         }
         if (authentication.getPrincipal() instanceof Caller caller) {
@@ -29,5 +28,24 @@ public final class CallerResolver {
         } catch (IllegalArgumentException ex) {
             throw new UnauthorizedException("Authentication required");
         }
+    }
+
+    /** Dùng cho endpoint công khai: chưa đăng nhập thì là Caller.anonymous() thay vì 401. */
+    public static Caller resolveOrAnonymous(Authentication authentication) {
+        return isAuthenticated(authentication) ? resolve(authentication) : Caller.anonymous();
+    }
+
+    /** Endpoint cần tài khoản (sơ đồ của tôi, tạo sơ đồ, quản lý chia sẻ): chỉ cầm token chia sẻ là chưa đủ. */
+    public static UUID requireUserId(Authentication authentication) {
+        UUID userId = resolve(authentication).userId();
+        if (userId == null) {
+            throw new UnauthorizedException("Authentication required");
+        }
+        return userId;
+    }
+
+    private static boolean isAuthenticated(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 }
