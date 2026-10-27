@@ -1,0 +1,12 @@
+# Chỉ cần pom.xml và src/ để build image
+target/
+.git/
+.vscode/
+.idea/
+docs/
+*.md
+*.log
+
+# Không đưa bí mật vào image (cấu hình được truyền qua docker-compose.yml)
+.env
+.env.*
