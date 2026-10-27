@@ -1,4 +1,4 @@
-package com.diagramio.api.version;
+package com.diagramio.api.version.dto;
 
 import com.diagramio.domain.version.DiagramVersion;
 import com.fasterxml.jackson.annotation.JsonRawValue;

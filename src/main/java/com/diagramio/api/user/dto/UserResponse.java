@@ -1,4 +1,4 @@
-package com.diagramio.api.user;
+package com.diagramio.api.user.dto;
 
 import com.diagramio.domain.user.User;
 import java.time.Instant;

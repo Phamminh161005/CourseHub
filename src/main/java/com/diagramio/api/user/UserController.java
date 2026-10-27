@@ -1,5 +1,8 @@
 package com.diagramio.api.user;
 
+import com.diagramio.api.user.dto.ChangePasswordRequest;
+import com.diagramio.api.user.dto.UserResponse;
+import com.diagramio.config.OpenApiConfig;
 import com.diagramio.domain.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/users/me")
 @Tag(name = "Users", description = "Tài khoản của người đang đăng nhập")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 public class UserController {
 
     private final UserService userService;

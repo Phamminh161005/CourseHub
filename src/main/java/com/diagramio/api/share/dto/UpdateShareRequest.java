@@ -1,4 +1,4 @@
-package com.diagramio.api.share;
+package com.diagramio.api.share.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

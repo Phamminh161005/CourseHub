@@ -8,7 +8,7 @@ import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.infrastructure.diagram.DiagramMapper;
-import com.diagramio.infrastructure.diagram.DiagramRepositoryImpl;
+import com.diagramio.infrastructure.diagram.DiagramRepositoryAdapter;
 import com.diagramio.infrastructure.version.DiagramVersionRepositoryAdapter;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -30,7 +30,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({DiagramRepositoryImpl.class, DiagramMapper.class, DiagramVersionRepositoryAdapter.class})
+@Import({DiagramRepositoryAdapter.class, DiagramMapper.class, DiagramVersionRepositoryAdapter.class})
 @Testcontainers(disabledWithoutDocker = true)
 class JpaRepositoriesIntegrationTest {
 
@@ -43,7 +43,7 @@ class JpaRepositoriesIntegrationTest {
     private static final String DATA = "{\"nodes\": [{\"id\": \"n1\"}], \"edges\": []}";
 
     @Autowired
-    private DiagramRepositoryImpl diagramRepository;
+    private DiagramRepositoryAdapter diagramRepository;
 
     @Autowired
     private DiagramVersionRepositoryAdapter versionRepository;

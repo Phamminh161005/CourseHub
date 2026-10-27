@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
 import java.util.UUID;
@@ -79,6 +80,35 @@ class DiagramServiceTest {
                 Caller.user(current.getOwnerId()), 2));
 
         verify(repository, never()).save(any(Diagram.class));
+    }
+
+    // ---- cấu trúc data ----
+
+    @Test
+    void updateDiagramRejectsDataWithoutNodesAndEdgesArrays() {
+        UUID id = UUID.randomUUID();
+        Diagram current = diagram(id, 1);
+        when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
+        Caller owner = Caller.user(current.getOwnerId());
+
+        for (String data : new String[] {"{\"foo\": 1}", "{\"nodes\": \"abc\", \"edges\": []}",
+                "{\"nodes\": []}", "\"{\\\"nodes\\\": []}\"", "[]", "not json"}) {
+            InvalidInputException ex = assertThrows(InvalidInputException.class,
+                    () -> service.updateDiagram(id, "Orders", "ERD", data, false, owner, 1), data);
+            assertTrue(ex.getMessage().startsWith("data must be"), data);
+        }
+        verify(repository, never()).save(any(Diagram.class));
+    }
+
+    // ---- phân trang ----
+
+    @Test
+    void pageSizeIsLimited() {
+        UUID ownerId = UUID.randomUUID();
+        assertThrows(InvalidInputException.class,
+                () -> service.getDiagramsByOwner(ownerId, null, null, 0, DiagramService.MAX_PAGE_SIZE + 1));
+        assertThrows(InvalidInputException.class, () -> service.getPublicDiagrams(0, 0));
+        assertThrows(InvalidInputException.class, () -> service.getPublicDiagrams(-1, 20));
     }
 
     // ---- phân quyền sửa ----

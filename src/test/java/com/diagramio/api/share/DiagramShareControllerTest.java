@@ -121,6 +121,7 @@ class DiagramShareControllerTest {
         mockMvc.perform(get("/api/v1/diagrams/" + diagramId + "/shares"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].shareToken").value("token123"))
+                .andExpect(jsonPath("$[0].shareUrl").value("http://localhost/api/v1/shares/token123"))
                 .andExpect(jsonPath("$[0].role").value("view"));
     }
 
@@ -136,6 +137,7 @@ class DiagramShareControllerTest {
                         .content("{\"role\":\"Edit\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.shareToken").value("token_new"))
+                .andExpect(jsonPath("$.shareUrl").value("http://localhost/api/v1/shares/token_new"))
                 .andExpect(jsonPath("$.role").value("edit"));
     }
 

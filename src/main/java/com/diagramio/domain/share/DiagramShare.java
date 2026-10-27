@@ -18,10 +18,10 @@ public class DiagramShare {
     private final Instant createdAt;
 
     public DiagramShare(UUID id, UUID diagramId, String shareToken, ShareRole role, Instant createdAt) {
-        this.id = Objects.requireNonNull(id, "id không được để trống");
-        this.diagramId = Objects.requireNonNull(diagramId, "diagramId không được để trống");
-        this.shareToken = Objects.requireNonNull(shareToken, "shareToken không được để trống");
-        this.role = Objects.requireNonNull(role, "role không được để trống");
+        this.id = Objects.requireNonNull(id, "id must not be null");
+        this.diagramId = Objects.requireNonNull(diagramId, "diagramId must not be null");
+        this.shareToken = Objects.requireNonNull(shareToken, "shareToken must not be null");
+        this.role = Objects.requireNonNull(role, "role must not be null");
         this.createdAt = createdAt != null ? createdAt : Instant.now();
     }
 

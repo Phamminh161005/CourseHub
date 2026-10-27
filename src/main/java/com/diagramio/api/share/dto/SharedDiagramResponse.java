@@ -1,4 +1,4 @@
-package com.diagramio.api.share;
+package com.diagramio.api.share.dto;
 
 import com.diagramio.domain.share.SharedDiagramView;
 import com.fasterxml.jackson.annotation.JsonRawValue;

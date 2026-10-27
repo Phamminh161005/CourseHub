@@ -2,14 +2,11 @@ package com.diagramio.api;
 
 import com.diagramio.api.dto.ErrorResponse;
 import com.diagramio.domain.exception.ConflictException;
-import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.DomainException;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
-import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.exception.UnauthorizedException;
-import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.stream.Collectors;
@@ -28,25 +25,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    @ExceptionHandler(OptimisticLockConflictException.class)
-    public ResponseEntity<ErrorResponse> handleOptimisticLock(
-            OptimisticLockConflictException ex, HttpServletRequest request) {
-        return build(HttpStatus.CONFLICT,
-                "Dữ liệu sơ đồ đã bị thay đổi bởi phiên làm việc khác. Vui lòng làm mới trang!", request);
-    }
-
-    @ExceptionHandler(UnauthorizedDiagramAccessException.class)
-    public ResponseEntity<ErrorResponse> handleDiagramAccess(
-            UnauthorizedDiagramAccessException ex, HttpServletRequest request) {
-        return build(HttpStatus.FORBIDDEN, ex.getMessage(), request);
-    }
-
-    @ExceptionHandler(DiagramNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleDiagramNotFound(
-            DiagramNotFoundException ex, HttpServletRequest request) {
-        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
-    }
 
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ErrorResponse> handleDomain(DomainException ex, HttpServletRequest request) {

@@ -1,8 +1,10 @@
 package com.diagramio.api.share;
 
+import com.diagramio.api.share.dto.SharedDiagramResponse;
 import com.diagramio.domain.share.SharedDiagramView;
 import com.diagramio.domain.share.ShareService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/shares")
+@SecurityRequirements
 @Tag(name = "Public Sharing", description = "Truy xuất sơ đồ công khai thông qua mã chia sẻ (Không yêu cầu đăng nhập)")
 public class PublicShareController {
 
