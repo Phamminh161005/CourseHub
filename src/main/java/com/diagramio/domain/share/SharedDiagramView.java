@@ -1,4 +1,4 @@
-package com.diagramio.domain.model;
+package com.diagramio.domain.share;
 
 import java.time.Instant;
 import java.util.Objects;

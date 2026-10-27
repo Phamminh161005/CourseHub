@@ -1,9 +1,10 @@
-package com.diagramio.api;
+package com.diagramio.api.share;
 
+import com.diagramio.api.GlobalExceptionHandler;
 import com.diagramio.config.SecurityConfig;
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.model.SharedDiagramView;
-import com.diagramio.domain.service.ShareService;
+import com.diagramio.domain.share.DiagramShare;
+import com.diagramio.domain.share.SharedDiagramView;
+import com.diagramio.domain.share.ShareService;
 import com.diagramio.infrastructure.security.JwtTokenProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

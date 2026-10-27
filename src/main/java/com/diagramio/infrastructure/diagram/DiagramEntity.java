@@ -1,4 +1,4 @@
-package com.diagramio.infrastructure.persistence.diagram;
+package com.diagramio.infrastructure.diagram;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

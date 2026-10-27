@@ -1,6 +1,5 @@
-package com.diagramio.domain.repository;
+package com.diagramio.domain.share;
 
-import com.diagramio.domain.model.DiagramShare;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

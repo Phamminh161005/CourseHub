@@ -1,6 +1,6 @@
-package com.diagramio.api.dto.share;
+package com.diagramio.api.share;
 
-import com.diagramio.domain.model.DiagramShare;
+import com.diagramio.domain.share.DiagramShare;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;

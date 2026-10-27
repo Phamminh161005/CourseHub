@@ -1,6 +1,5 @@
-package com.diagramio.infrastructure.persistence.repository;
+package com.diagramio.infrastructure.share;
 
-import com.diagramio.infrastructure.persistence.entity.DiagramShareEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

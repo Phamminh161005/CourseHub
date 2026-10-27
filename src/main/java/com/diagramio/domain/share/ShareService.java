@@ -1,13 +1,10 @@
-package com.diagramio.domain.service;
+package com.diagramio.domain.share;
 
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.diagram.Diagram;
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.model.SharedDiagramView;
 import com.diagramio.domain.diagram.DiagramRepository;
-import com.diagramio.domain.repository.DiagramShareRepository;
 
 import java.security.SecureRandom;
 import java.time.Instant;

@@ -1,10 +1,7 @@
-package com.diagramio.api;
+package com.diagramio.api.share;
 
-import com.diagramio.api.dto.share.CreateShareRequest;
-import com.diagramio.api.dto.share.ShareResponse;
-import com.diagramio.api.dto.share.UpdateShareRequest;
-import com.diagramio.domain.model.DiagramShare;
-import com.diagramio.domain.service.ShareService;
+import com.diagramio.domain.share.DiagramShare;
+import com.diagramio.domain.share.ShareService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

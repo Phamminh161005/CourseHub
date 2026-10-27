@@ -1,6 +1,6 @@
-package com.diagramio.api.dto.share;
+package com.diagramio.api.share;
 
-import com.diagramio.domain.model.SharedDiagramView;
+import com.diagramio.domain.share.SharedDiagramView;
 import com.fasterxml.jackson.annotation.JsonRawValue;
 import io.swagger.v3.oas.annotations.media.Schema;
 
