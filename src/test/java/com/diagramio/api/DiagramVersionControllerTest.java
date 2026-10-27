@@ -25,6 +25,7 @@ import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import com.diagramio.domain.version.RestoreResult;
+import com.diagramio.infrastructure.security.JwtTokenProvider;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +50,9 @@ class DiagramVersionControllerTest {
 
     @MockitoBean
     private DiagramVersionService versionService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
 
     private final UUID ownerId = UUID.randomUUID();
     private final UUID diagramId = UUID.randomUUID();

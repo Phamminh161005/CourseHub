@@ -20,6 +20,7 @@ import com.diagramio.domain.diagram.DiagramService;
 import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
+import com.diagramio.infrastructure.security.JwtTokenProvider;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,9 @@ class DiagramControllerTest {
 
     @MockitoBean
     private DiagramService diagramService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
 
     @Test
     void createReturns201ForValidRequest() throws Exception {

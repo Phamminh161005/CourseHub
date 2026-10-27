@@ -4,6 +4,7 @@ import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.model.DiagramShare;
 import com.diagramio.domain.model.SharedDiagramView;
 import com.diagramio.domain.service.ShareService;
+import com.diagramio.infrastructure.security.JwtTokenProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ class DiagramShareControllerTest {
 
     @MockitoBean
     private ShareService shareService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider; // SecurityConfig cần; mặc định coi mọi token là không hợp lệ
 
     private final UUID diagramId = UUID.randomUUID();
     private final UUID shareId = UUID.randomUUID();

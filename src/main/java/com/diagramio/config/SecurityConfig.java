@@ -1,27 +1,38 @@
 package com.diagramio.config;
 
+import com.diagramio.api.dto.ErrorResponse;
+import com.diagramio.infrastructure.security.JwtAuthenticationFilter;
+import com.diagramio.infrastructure.security.JwtTokenProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.beans.factory.ObjectProvider;
 
 /**
- * Khung bảo mật: stateless, endpoint công khai được mở, còn lại phải xác thực.
- * Endpoint /api/v1/shares/** là public để người dùng có thể xem sơ đồ qua link chia sẻ mà không cần đăng nhập.
+ * Bảo mật: stateless, endpoint công khai được mở, còn lại phải xác thực.
+ * /api/v1/shares/** công khai để xem sơ đồ qua link chia sẻ; GET /api/v1/diagrams/* công khai cho sơ đồ public.
+ * Người dùng được xác định bởi filter JWT; filter không tự từ chối, request chưa xác thực vào endpoint
+ * cần đăng nhập sẽ nhận 401 dạng JSON.
  */
 @Configuration
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/health",
-            "/api/v1/auth/**",
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh-token",
             "/api/v1/shares/**",
             "/v3/api-docs/**",
             "/swagger-ui.html",
@@ -29,20 +40,38 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http, ObjectProvider<UatHeaderAuthenticationFilter> uatFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtTokenProvider jwtTokenProvider,
+                                                   ObjectMapper objectMapper,
+                                                   ObjectProvider<UatHeaderAuthenticationFilter> uatFilter)
+            throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .exceptionHandling(e -> e.authenticationEntryPoint(jsonUnauthorizedEntryPoint(objectMapper)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/diagrams/*").permitAll()
-                        .anyRequest().authenticated());
+                        .anyRequest().authenticated())
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+                        UsernamePasswordAuthenticationFilter.class);
+        // TODO bước 0: bỏ filter UAT (file chỉ có trên máy Bảo)
         UatHeaderAuthenticationFilter filter = uatFilter.getIfAvailable();
         if (filter != null) {
             http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
         }
         return http.build();
+    }
+
+    /** Trả 401 cùng khung JSON với GlobalExceptionHandler. */
+    private static AuthenticationEntryPoint jsonUnauthorizedEntryPoint(ObjectMapper objectMapper) {
+        return (request, response, exception) -> {
+            HttpStatus status = HttpStatus.UNAUTHORIZED;
+            response.setStatus(status.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            objectMapper.writeValue(response.getOutputStream(), new ErrorResponse(Instant.now(), status.value(),
+                    status.getReasonPhrase(), "Authentication required", request.getRequestURI()));
+        };
     }
 }
