@@ -48,7 +48,7 @@ class DiagramServiceTest {
     }
 
     @Test
-    void updateDiagramIncrementsVersionWhenRequestVersionMatches() {
+    void updateDiagramSavesWithCheckedVersionWhenRequestVersionMatches() {
         UUID id = UUID.randomUUID();
         Diagram current = diagram(id, 3);
         when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
@@ -58,7 +58,8 @@ class DiagramServiceTest {
                 id, "Updated", "UML", "{\"nodes\": [], \"edges\": []}", false,
                 current.getOwnerId(), 3);
 
-        assertEquals(4, updated.getVersion());
+        // Domain giữ nguyên version đã đối chiếu; @Version ở tầng persistence tăng lên 4 khi ghi
+        assertEquals(3, updated.getVersion());
         assertEquals("Updated", updated.getTitle());
         verify(repository).save(current);
     }

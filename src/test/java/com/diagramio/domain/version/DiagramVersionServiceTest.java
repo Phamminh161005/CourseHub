@@ -185,7 +185,8 @@ class DiagramVersionServiceTest {
         assertThat(backup.getValue().note()).isEqualTo("Auto backup before restoring version 2");
 
         assertThat(result.diagram().getData()).isEqualTo(OLD_DATA);
-        assertThat(result.diagram().getVersion()).isEqualTo(6);
+        // Gửi đúng version đã đọc; tầng persistence (@Version) đối chiếu và tăng lên 1
+        assertThat(result.diagram().getVersion()).isEqualTo(5);
         assertThat(result.diagram().getUpdatedAt()).isEqualTo(NOW);
         assertThat(result.diagram().getUpdatedBy()).isEqualTo(ownerId);
         assertThat(result.backup()).isEqualTo(backup.getValue());

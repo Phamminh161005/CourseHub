@@ -2,9 +2,11 @@ package com.diagramio.infrastructure.persistence.diagram;
 
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.exception.OptimisticLockConflictException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
@@ -19,9 +21,18 @@ public class DiagramRepositoryImpl implements DiagramRepository {
         this.mapper = mapper;
     }
 
+    /**
+     * Ghi ngay (saveAndFlush) để @Version kiểm tra và tăng version trong cùng lời gọi:
+     * nếu người khác vừa ghi trước thì trả về 409 thay vì lỗi lúc commit.
+     */
     @Override
     public Diagram save(Diagram diagram) {
-        return mapper.toDomain(repository.save(mapper.toEntity(diagram)));
+        try {
+            return mapper.toDomain(repository.saveAndFlush(mapper.toEntity(diagram)));
+        } catch (OptimisticLockingFailureException ex) {
+            Integer currentVersion = repository.findById(diagram.getId()).map(DiagramEntity::getVersion).orElse(null);
+            throw new OptimisticLockConflictException(diagram.getId(), diagram.getVersion(), currentVersion);
+        }
     }
 
     @Override

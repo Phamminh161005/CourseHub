@@ -58,7 +58,8 @@ public class DiagramVersionService {
 
     /**
      * Sao lưu trạng thái hiện tại thành một snapshot, rồi chép dữ liệu của phiên bản được chọn
-     * vào sơ đồ. Cả hai bước nằm trong cùng một transaction.
+     * vào sơ đồ. Cả hai bước nằm trong cùng một transaction. Version của sơ đồ được tầng
+     * persistence (@Version) kiểm tra và tăng lên 1, giống luồng cập nhật sơ đồ.
      */
     public RestoreResult restore(UUID diagramId, UUID versionId, Caller caller) {
         return transactionRunner.inTransaction(() -> {
@@ -70,7 +71,6 @@ public class DiagramVersionService {
                     "Auto backup before restoring version " + target.versionNumber(), caller);
 
             diagram.setData(target.data());
-            diagram.setVersion(diagram.getVersion() + 1);
             diagram.setUpdatedBy(caller.userId());
             diagram.setUpdatedAt(Instant.now(clock));
             Diagram restored = diagramRepository.save(diagram);

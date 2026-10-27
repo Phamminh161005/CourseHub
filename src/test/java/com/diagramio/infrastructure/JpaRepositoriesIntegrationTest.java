@@ -111,7 +111,8 @@ class JpaRepositoriesIntegrationTest {
         diagram.setData("{\"nodes\": [], \"edges\": []}"); // vẫn giữ version 1 đã đọc
 
         assertThatThrownBy(() -> diagramRepository.save(diagram))
-                .isInstanceOf(OptimisticLockConflictException.class);
+                .isInstanceOf(OptimisticLockConflictException.class)
+                .hasMessage("Diagram version conflict: requested 1, current 2");
         Diagram stored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(stored.getVersion()).isEqualTo(2);
         assertThat(stored.getData()).contains("\"n1\"");
