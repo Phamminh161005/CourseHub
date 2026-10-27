@@ -12,57 +12,52 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JpaDiagramVersionRepository implements DiagramVersionRepository {
+public class DiagramVersionRepositoryAdapter implements DiagramVersionRepository {
 
-    private final SpringDataDiagramVersionRepository repository;
+    private final DiagramVersionJpaRepository jpaRepository;
     private final EntityManager entityManager;
 
-    public JpaDiagramVersionRepository(SpringDataDiagramVersionRepository repository, EntityManager entityManager) {
-        this.repository = repository;
+    public DiagramVersionRepositoryAdapter(DiagramVersionJpaRepository jpaRepository, EntityManager entityManager) {
+        this.jpaRepository = jpaRepository;
         this.entityManager = entityManager;
+    }
+
+    @Override
+    public void lockDiagram(UUID diagramId) {
+        jpaRepository.lockDiagramRow(diagramId);
     }
 
     @Override
     public DiagramVersion save(DiagramVersion version) {
         // persist (không phải merge): snapshot chỉ được thêm mới, không bao giờ ghi đè
-        DiagramVersionEntity entity = toEntity(version);
+        DiagramVersionEntity entity = DiagramVersionEntity.fromDomain(version);
         try {
             entityManager.persist(entity);
             entityManager.flush();
         } catch (PersistenceException ex) {
-            // Hai request cùng lấy max + 1 => vi phạm UNIQUE (diagram_id, version_number)
+            // Lưới an toàn: bình thường lockDiagram đã xếp hàng các yêu cầu nên không trùng số thứ tự
             if (ex instanceof ConstraintViolationException || ex.getCause() instanceof ConstraintViolationException) {
                 throw new ConflictException("Another version was saved at the same time, please retry");
             }
             throw ex;
         }
-        return toDomain(entity);
+        return entity.toDomain();
     }
 
     @Override
     public List<DiagramVersion> findByDiagramId(UUID diagramId) {
-        return repository.findByDiagramIdOrderByVersionNumberDesc(diagramId).stream()
-                .map(JpaDiagramVersionRepository::toDomain)
+        return jpaRepository.findByDiagramIdOrderByVersionNumberDesc(diagramId).stream()
+                .map(DiagramVersionEntity::toDomain)
                 .toList();
     }
 
     @Override
     public Optional<DiagramVersion> findByIdAndDiagramId(UUID id, UUID diagramId) {
-        return repository.findByIdAndDiagramId(id, diagramId).map(JpaDiagramVersionRepository::toDomain);
+        return jpaRepository.findByIdAndDiagramId(id, diagramId).map(DiagramVersionEntity::toDomain);
     }
 
     @Override
     public int maxVersionNumber(UUID diagramId) {
-        return repository.maxVersionNumber(diagramId);
-    }
-
-    private static DiagramVersionEntity toEntity(DiagramVersion v) {
-        return new DiagramVersionEntity(v.id(), v.diagramId(), v.versionNumber(), v.data(), v.note(),
-                v.createdBy(), v.createdAt());
-    }
-
-    private static DiagramVersion toDomain(DiagramVersionEntity e) {
-        return new DiagramVersion(e.getId(), e.getDiagramId(), e.getVersionNumber(), e.getData(), e.getNote(),
-                e.getCreatedBy(), e.getCreatedAt());
+        return jpaRepository.maxVersionNumber(diagramId);
     }
 }

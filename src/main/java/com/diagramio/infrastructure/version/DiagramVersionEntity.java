@@ -1,5 +1,6 @@
 package com.diagramio.infrastructure.version;
 
+import com.diagramio.domain.version.DiagramVersion;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -38,24 +39,22 @@ public class DiagramVersionEntity {
     private Instant createdAt;
 
     protected DiagramVersionEntity() {
+        // JPA cần constructor không tham số
     }
 
-    public DiagramVersionEntity(UUID id, UUID diagramId, int versionNumber, String data, String note,
-                                UUID createdBy, Instant createdAt) {
-        this.id = id;
-        this.diagramId = diagramId;
-        this.versionNumber = versionNumber;
-        this.data = data;
-        this.note = note;
-        this.createdBy = createdBy;
-        this.createdAt = createdAt;
+    static DiagramVersionEntity fromDomain(DiagramVersion version) {
+        DiagramVersionEntity entity = new DiagramVersionEntity();
+        entity.id = version.id();
+        entity.diagramId = version.diagramId();
+        entity.versionNumber = version.versionNumber();
+        entity.data = version.data();
+        entity.note = version.note();
+        entity.createdBy = version.createdBy();
+        entity.createdAt = version.createdAt();
+        return entity;
     }
 
-    public UUID getId() { return id; }
-    public UUID getDiagramId() { return diagramId; }
-    public int getVersionNumber() { return versionNumber; }
-    public String getData() { return data; }
-    public String getNote() { return note; }
-    public UUID getCreatedBy() { return createdBy; }
-    public Instant getCreatedAt() { return createdAt; }
+    DiagramVersion toDomain() {
+        return new DiagramVersion(id, diagramId, versionNumber, data, note, createdBy, createdAt);
+    }
 }

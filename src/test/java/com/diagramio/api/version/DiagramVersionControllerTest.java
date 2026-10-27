@@ -1,4 +1,4 @@
-package com.diagramio.api;
+package com.diagramio.api.version;
 
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;

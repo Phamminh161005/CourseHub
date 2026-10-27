@@ -1,4 +1,4 @@
-package com.diagramio.api.dto;
+package com.diagramio.api.version;
 
 import com.diagramio.domain.version.DiagramVersionService;
 import io.swagger.v3.oas.annotations.media.Schema;

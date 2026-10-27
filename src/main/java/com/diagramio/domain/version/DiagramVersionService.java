@@ -13,7 +13,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Lưu phiên bản (snapshot) và khôi phục sơ đồ về một phiên bản cũ. */
+/**
+ * Lưu phiên bản (snapshot) và khôi phục sơ đồ về một phiên bản cũ.
+ * Lưu/khôi phục khóa dòng sơ đồ trước khi đọc, nên các yêu cầu đồng thời được xếp hàng
+ * và xử lý lần lượt: số thứ tự phiên bản tăng tuyến tính, snapshot luôn chụp trạng thái mới nhất.
+ */
 public class DiagramVersionService {
 
     public static final int MAX_NOTE_LENGTH = 255;
@@ -50,6 +54,7 @@ public class DiagramVersionService {
             throw new InvalidInputException("note must not exceed " + MAX_NOTE_LENGTH + " characters");
         }
         return transactionRunner.inTransaction(() -> {
+            versionRepository.lockDiagram(diagramId);
             Diagram diagram = findDiagram(diagramId);
             requireEditAccess(diagram, caller);
             return snapshot(diagram, note, caller);
@@ -63,6 +68,7 @@ public class DiagramVersionService {
      */
     public RestoreResult restore(UUID diagramId, UUID versionId, Caller caller) {
         return transactionRunner.inTransaction(() -> {
+            versionRepository.lockDiagram(diagramId);
             Diagram diagram = findDiagram(diagramId);
             requireEditAccess(diagram, caller);
             DiagramVersion target = findVersion(diagramId, versionId);

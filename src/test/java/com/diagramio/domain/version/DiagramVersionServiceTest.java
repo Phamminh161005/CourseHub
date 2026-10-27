@@ -76,6 +76,22 @@ class DiagramVersionServiceTest {
     }
 
     @Test
+    void createAndRestoreLockTheDiagramBeforeReadingIt() {
+        UUID versionId = UUID.randomUUID();
+        when(versionRepository.findByIdAndDiagramId(versionId, diagramId))
+                .thenReturn(Optional.of(version(versionId, 1, OLD_DATA)));
+
+        service.createVersion(diagramId, "x", Caller.user(ownerId));
+        service.restore(diagramId, versionId, Caller.user(ownerId));
+
+        InOrder order = inOrder(versionRepository, diagramRepository);
+        order.verify(versionRepository).lockDiagram(diagramId);
+        order.verify(diagramRepository).findById(diagramId);
+        order.verify(versionRepository).lockDiagram(diagramId);
+        order.verify(diagramRepository).findById(diagramId);
+    }
+
+    @Test
     void firstSnapshotGetsNumberOne() {
         when(versionRepository.maxVersionNumber(diagramId)).thenReturn(0);
 
