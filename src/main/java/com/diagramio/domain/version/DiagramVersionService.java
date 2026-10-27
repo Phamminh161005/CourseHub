@@ -8,6 +8,7 @@ import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
+import com.diagramio.domain.exception.OptimisticLockConflictException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -49,7 +50,12 @@ public class DiagramVersionService {
         return findVersion(diagramId, versionId);
     }
 
-    public DiagramVersion createVersion(UUID diagramId, String note, Caller caller) {
+    /**
+     * expectedVersion (không bắt buộc) là version sơ đồ mà client đang thấy, ví dụ version vừa nhận
+     * sau khi PUT. Nếu người khác đã sửa chen vào giữa hai lần gọi thì trả 409 thay vì chụp nhầm
+     * nội dung của họ. Kiểm tra sau khi khóa dòng nên không ai chen được giữa lúc so và lúc chụp.
+     */
+    public DiagramVersion createVersion(UUID diagramId, String note, Integer expectedVersion, Caller caller) {
         if (note != null && note.length() > MAX_NOTE_LENGTH) {
             throw new InvalidInputException("note must not exceed " + MAX_NOTE_LENGTH + " characters");
         }
@@ -57,6 +63,9 @@ public class DiagramVersionService {
             versionRepository.lockDiagram(diagramId);
             Diagram diagram = findDiagram(diagramId);
             requireEditAccess(diagram, caller);
+            if (expectedVersion != null && !expectedVersion.equals(diagram.getVersion())) {
+                throw new OptimisticLockConflictException(diagramId, expectedVersion, diagram.getVersion());
+            }
             return snapshot(diagram, note, caller);
         });
     }

@@ -22,6 +22,7 @@ import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.NotFoundException;
+import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import com.diagramio.domain.version.RestoreResult;
@@ -78,7 +79,7 @@ class DiagramVersionControllerTest {
 
     @Test
     void createReturns201WithLocationAndSnapshot() throws Exception {
-        when(versionService.createVersion(diagramId, "Bản thiết kế ERD Pha 1", Caller.user(ownerId)))
+        when(versionService.createVersion(diagramId, "Bản thiết kế ERD Pha 1", null, Caller.user(ownerId)))
                 .thenReturn(version(versionId, 3));
 
         mockMvc.perform(post(base).with(user(ownerId.toString()))
@@ -95,8 +96,19 @@ class DiagramVersionControllerTest {
     }
 
     @Test
+    void createPassesExpectedVersionAndReturns409WhenStale() throws Exception {
+        when(versionService.createVersion(diagramId, "Bản của An", 6, Caller.user(ownerId)))
+                .thenThrow(new OptimisticLockConflictException(diagramId, 6, 7));
+
+        mockMvc.perform(post(base).with(user(ownerId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"note\": \"Bản của An\", \"version\": 6}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void createWithoutBodyUsesNullNote() throws Exception {
-        when(versionService.createVersion(eq(diagramId), isNull(), any())).thenReturn(version(versionId, 1));
+        when(versionService.createVersion(eq(diagramId), isNull(), isNull(), any())).thenReturn(version(versionId, 1));
 
         mockMvc.perform(post(base).with(user(ownerId.toString())))
                 .andExpect(status().isCreated());
@@ -105,11 +117,11 @@ class DiagramVersionControllerTest {
     @Test
     void createAsEditShareTokenPassesShareCaller() throws Exception {
         Caller editor = Caller.shareToken(diagramId, ShareRole.EDIT);
-        when(versionService.createVersion(diagramId, null, editor)).thenReturn(version(versionId, 1));
+        when(versionService.createVersion(diagramId, null, null, editor)).thenReturn(version(versionId, 1));
 
         mockMvc.perform(post(base).with(authentication(new UsernamePasswordAuthenticationToken(editor, null, List.of()))))
                 .andExpect(status().isCreated());
-        verify(versionService).createVersion(diagramId, null, editor);
+        verify(versionService).createVersion(diagramId, null, null, editor);
     }
 
     @Test
@@ -122,12 +134,12 @@ class DiagramVersionControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.path").value(base));
-        verify(versionService, never()).createVersion(any(), any(), any());
+        verify(versionService, never()).createVersion(any(), any(), any(), any());
     }
 
     @Test
     void createForbiddenIs403() throws Exception {
-        when(versionService.createVersion(any(), any(), any())).thenThrow(new ForbiddenException("no edit"));
+        when(versionService.createVersion(any(), any(), any(), any())).thenThrow(new ForbiddenException("no edit"));
 
         mockMvc.perform(post(base).with(user(ownerId.toString())))
                 .andExpect(status().isForbidden())
@@ -137,7 +149,7 @@ class DiagramVersionControllerTest {
 
     @Test
     void concurrentCreateIs409() throws Exception {
-        when(versionService.createVersion(any(), any(), any())).thenThrow(new ConflictException("retry"));
+        when(versionService.createVersion(any(), any(), any(), any())).thenThrow(new ConflictException("retry"));
 
         mockMvc.perform(post(base).with(user(ownerId.toString())))
                 .andExpect(status().isConflict());

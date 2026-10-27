@@ -17,6 +17,7 @@ import com.diagramio.domain.diagram.DiagramRepository;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
+import com.diagramio.domain.exception.OptimisticLockConflictException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -64,7 +65,7 @@ class DiagramVersionServiceTest {
     void ownerCreatesSnapshotOfCurrentDataWithNextNumber() {
         when(versionRepository.maxVersionNumber(diagramId)).thenReturn(3);
 
-        DiagramVersion created = service.createVersion(diagramId, "Bản thiết kế ERD Pha 1", Caller.user(ownerId));
+        DiagramVersion created = service.createVersion(diagramId, "Bản thiết kế ERD Pha 1", null, Caller.user(ownerId));
 
         assertThat(created.diagramId()).isEqualTo(diagramId);
         assertThat(created.versionNumber()).isEqualTo(4);
@@ -81,7 +82,7 @@ class DiagramVersionServiceTest {
         when(versionRepository.findByIdAndDiagramId(versionId, diagramId))
                 .thenReturn(Optional.of(version(versionId, 1, OLD_DATA)));
 
-        service.createVersion(diagramId, "x", Caller.user(ownerId));
+        service.createVersion(diagramId, "x", null, Caller.user(ownerId));
         service.restore(diagramId, versionId, Caller.user(ownerId));
 
         InOrder order = inOrder(versionRepository, diagramRepository);
@@ -92,10 +93,25 @@ class DiagramVersionServiceTest {
     }
 
     @Test
+    void snapshotWithMatchingVersionSucceeds() {
+        DiagramVersion created = service.createVersion(diagramId, "Bản của An", 5, Caller.user(ownerId));
+
+        assertThat(created.data()).isEqualTo(CURRENT_DATA);
+    }
+
+    @Test
+    void snapshotRejectsStaleVersionSoItNeverCapturesSomeoneElsesEdit() {
+        // client vừa PUT xong và thấy version 4, nhưng người khác đã sửa chen vào (hiện là 5)
+        assertThatThrownBy(() -> service.createVersion(diagramId, "Bản của An", 4, Caller.user(ownerId)))
+                .isInstanceOf(OptimisticLockConflictException.class);
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
     void firstSnapshotGetsNumberOne() {
         when(versionRepository.maxVersionNumber(diagramId)).thenReturn(0);
 
-        DiagramVersion created = service.createVersion(diagramId, null, Caller.user(ownerId));
+        DiagramVersion created = service.createVersion(diagramId, null, null, Caller.user(ownerId));
 
         assertThat(created.versionNumber()).isEqualTo(1);
         assertThat(created.note()).isNull();
@@ -103,7 +119,7 @@ class DiagramVersionServiceTest {
 
     @Test
     void editShareCanCreateSnapshotWithoutUser() {
-        DiagramVersion created = service.createVersion(diagramId, "edit link",
+        DiagramVersion created = service.createVersion(diagramId, "edit link", null,
                 Caller.shareToken(diagramId, ShareRole.EDIT));
 
         assertThat(created.createdBy()).isNull();
@@ -112,7 +128,7 @@ class DiagramVersionServiceTest {
 
     @Test
     void viewShareCannotCreateSnapshot() {
-        assertThatThrownBy(() -> service.createVersion(diagramId, "x", Caller.shareToken(diagramId, ShareRole.VIEW)))
+        assertThatThrownBy(() -> service.createVersion(diagramId, "x", null, Caller.shareToken(diagramId, ShareRole.VIEW)))
                 .isInstanceOf(ForbiddenException.class);
         verify(versionRepository, never()).save(any());
     }
@@ -121,7 +137,7 @@ class DiagramVersionServiceTest {
     void strangerCannotCreateSnapshotEvenOnPublicDiagram() {
         diagram.setPublic(true);
 
-        assertThatThrownBy(() -> service.createVersion(diagramId, "x", Caller.user(UUID.randomUUID())))
+        assertThatThrownBy(() -> service.createVersion(diagramId, "x", null, Caller.user(UUID.randomUUID())))
                 .isInstanceOf(ForbiddenException.class);
         verify(versionRepository, never()).save(any());
     }
@@ -130,7 +146,7 @@ class DiagramVersionServiceTest {
     void noteLongerThan255IsRejected() {
         String note = "a".repeat(256);
 
-        assertThatThrownBy(() -> service.createVersion(diagramId, note, Caller.user(ownerId)))
+        assertThatThrownBy(() -> service.createVersion(diagramId, note, null, Caller.user(ownerId)))
                 .isInstanceOf(InvalidInputException.class);
         verify(versionRepository, never()).save(any());
     }
@@ -140,7 +156,7 @@ class DiagramVersionServiceTest {
         UUID missing = UUID.randomUUID();
         when(diagramRepository.findById(missing)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createVersion(missing, "x", Caller.user(ownerId)))
+        assertThatThrownBy(() -> service.createVersion(missing, "x", null, Caller.user(ownerId)))
                 .isInstanceOf(NotFoundException.class);
     }
 
