@@ -159,6 +159,8 @@ Một số việc thường làm khác:
 
 ## 6. Kiểm thử tải trên Kaggle
 
+Link Notebook: https://www.kaggle.com/code/hoanggiabao1/diagramio
+
 Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 15 và công cụ tải Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Điều này giúp triệt tiêu hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend trên phần cứng chuẩn. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
 
 | Thông số | Giá trị |
