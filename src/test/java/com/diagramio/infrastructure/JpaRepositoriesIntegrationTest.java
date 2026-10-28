@@ -3,12 +3,16 @@ package com.diagramio.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
+import com.diagramio.domain.share.DiagramShare;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.infrastructure.diagram.DiagramMapper;
 import com.diagramio.infrastructure.diagram.DiagramRepositoryAdapter;
+import com.diagramio.infrastructure.share.DiagramShareMapper;
+import com.diagramio.infrastructure.share.DiagramShareRepositoryAdapter;
 import com.diagramio.infrastructure.version.DiagramVersionRepositoryAdapter;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -30,7 +34,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({DiagramRepositoryAdapter.class, DiagramMapper.class, DiagramVersionRepositoryAdapter.class})
+@Import({DiagramRepositoryAdapter.class, DiagramMapper.class, DiagramVersionRepositoryAdapter.class,
+        DiagramShareRepositoryAdapter.class, DiagramShareMapper.class})
 @Testcontainers(disabledWithoutDocker = true)
 class JpaRepositoriesIntegrationTest {
 
@@ -47,6 +52,9 @@ class JpaRepositoriesIntegrationTest {
 
     @Autowired
     private DiagramVersionRepositoryAdapter versionRepository;
+
+    @Autowired
+    private DiagramShareRepositoryAdapter shareRepository;
 
     @Test
     void savesAndReadsSnapshotsNewestFirst() {
@@ -116,6 +124,38 @@ class JpaRepositoriesIntegrationTest {
         Diagram stored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(stored.getVersion()).isEqualTo(2);
         assertThat(stored.getData()).contains("\"n1\"");
+    }
+
+    @Test
+    void updateRoleChangesRoleOfExistingShare() {
+        DiagramShare share = newShare(newDiagram().getId());
+
+        assertThat(shareRepository.updateRole(share.getId(), share.getDiagramId(), ShareRole.EDIT)).isTrue();
+        assertThat(shareRepository.findById(share.getId())).get()
+                .extracting(DiagramShare::getRole).isEqualTo(ShareRole.EDIT);
+    }
+
+    @Test
+    void roleUpdateAfterRevokeDoesNotRecreateTheLink() {
+        DiagramShare share = newShare(newDiagram().getId());
+        shareRepository.deleteById(share.getId());
+
+        assertThat(shareRepository.updateRole(share.getId(), share.getDiagramId(), ShareRole.EDIT)).isFalse();
+        assertThat(shareRepository.findByShareToken(share.getShareToken())).isEmpty();
+    }
+
+    @Test
+    void roleUpdateThroughAnotherDiagramMatchesNothing() {
+        DiagramShare share = newShare(newDiagram().getId());
+
+        assertThat(shareRepository.updateRole(share.getId(), newDiagram().getId(), ShareRole.EDIT)).isFalse();
+        assertThat(shareRepository.findById(share.getId())).get()
+                .extracting(DiagramShare::getRole).isEqualTo(ShareRole.VIEW);
+    }
+
+    private DiagramShare newShare(UUID diagramId) {
+        return shareRepository.save(new DiagramShare(UUID.randomUUID(), diagramId, "token-" + UUID.randomUUID(),
+                ShareRole.VIEW, Instant.now().truncatedTo(ChronoUnit.MICROS)));
     }
 
     private Diagram newDiagram() {

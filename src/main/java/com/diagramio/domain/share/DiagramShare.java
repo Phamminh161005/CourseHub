@@ -25,10 +25,6 @@ public class DiagramShare {
         this.createdAt = createdAt != null ? createdAt : Instant.now();
     }
 
-    public DiagramShare withRole(ShareRole newRole) {
-        return new DiagramShare(this.id, this.diagramId, this.shareToken, newRole, this.createdAt);
-    }
-
     public UUID getId() {
         return id;
     }

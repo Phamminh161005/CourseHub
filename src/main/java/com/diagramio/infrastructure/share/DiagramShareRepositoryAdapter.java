@@ -1,5 +1,6 @@
 package com.diagramio.infrastructure.share;
 
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.share.DiagramShare;
 import com.diagramio.domain.share.DiagramShareRepository;
 import org.springframework.stereotype.Repository;
@@ -43,6 +44,11 @@ public class DiagramShareRepositoryAdapter implements DiagramShareRepository {
         DiagramShareEntity entity = mapper.toEntity(share);
         DiagramShareEntity saved = jpaRepository.save(entity);
         return mapper.toDomain(saved);
+    }
+
+    @Override
+    public boolean updateRole(UUID shareId, UUID diagramId, ShareRole role) {
+        return jpaRepository.updateRole(shareId, diagramId, role.value()) == 1;
     }
 
     @Override
