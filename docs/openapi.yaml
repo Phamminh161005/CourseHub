@@ -1,0 +1,1219 @@
+openapi: 3.1.0
+info:
+  title: DiagramIO API
+  description: "REST API cho dịch vụ vẽ sơ đồ UML/ERD trực tuyến. Đăng nhập lấy access\
+    \ token (bearerAuth), hoặc dùng token của link chia sẻ qua header X-Share-Token\
+    \ (shareToken) để xem/sửa sơ đồ được chia sẻ."
+  version: v1
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+security:
+- bearerAuth: []
+- shareToken: []
+tags:
+- name: Diagrams
+  description: "Quản lý sơ đồ UML/ERD: tạo, xem, sửa (optimistic locking), xóa"
+- name: Diagram Sharing
+  description: Quản lý liên kết và quyền chia sẻ sơ đồ (Dành cho Chủ sở hữu)
+- name: Diagram versions
+  description: Lịch sử phiên bản (snapshot bất biến) và khôi phục sơ đồ
+- name: System
+  description: Trạng thái dịch vụ
+- name: Public Sharing
+  description: Truy xuất sơ đồ công khai thông qua mã chia sẻ (Không yêu cầu đăng
+    nhập)
+- name: Auth
+  description: "Đăng ký, đăng nhập, refresh token, đăng xuất"
+- name: Users
+  description: Tài khoản của người đang đăng nhập
+paths:
+  /api/v1/diagrams/{id}:
+    get:
+      tags:
+      - Diagrams
+      summary: Chi tiết sơ đồ kèm data
+      description: "Sơ đồ công khai: ai cũng xem được. Riêng tư: owner hoặc người\
+        \ có link chia sẻ (view/edit)."
+      operationId: getById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Chi tiết sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DiagramResponse"
+        "403":
+          description: Không có quyền xem
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+      - Diagrams
+      summary: Cập nhật sơ đồ
+      description: "Owner hoặc người có link edit. Bắt buộc gửi version đang thấy;\
+        \ lệch thì 409. data phải là object có mảng nodes và edges, tối đa 2 MB. Chỉ\
+        \ owner đổi được isPublic."
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDiagramRequest"
+        required: true
+      responses:
+        "200":
+          description: "Đã cập nhật, version tăng 1"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DiagramResponse"
+        "403":
+          description: Không có quyền sửa
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Sơ đồ đã bị người khác sửa (version lệch)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+      - Diagrams
+      summary: Xóa sơ đồ
+      description: Chỉ owner.
+      operationId: delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Đã xóa
+        "403":
+          description: Không phải owner
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+      - bearerAuth: []
+  /api/v1/diagrams:
+    get:
+      tags:
+      - Diagrams
+      summary: Danh sách sơ đồ của tôi
+      description: "Lọc theo loại (UML/ERD), tìm theo tên, phân trang (size tối đ\
+        a 100)."
+      operationId: getMyDiagrams
+      parameters:
+      - name: title
+        in: query
+        description: Tìm theo tên (không phân biệt hoa thường)
+        required: false
+        schema:
+          type: string
+      - name: diagramType
+        in: query
+        description: UML hoặc ERD
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "200":
+          description: Một trang danh sách sơ đồ (không kèm data)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseDiagramSummaryResponse"
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Diagrams
+      summary: Tạo sơ đồ mới
+      description: "Sơ đồ mới luôn riêng tư, data mặc định {\"nodes\": [], \"edges\"\
+        : []}. Người tạo là owner."
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDiagramRequest"
+        required: true
+      responses:
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "201":
+          description: Đã tạo sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DiagramResponse"
+      security:
+      - bearerAuth: []
+  /api/v1/diagrams/{id}/shares:
+    get:
+      tags:
+      - Diagram Sharing
+      summary: Danh sách liên kết chia sẻ của sơ đồ
+      description: Chỉ chủ sở hữu (Owner) mới có quyền truy cập.
+      operationId: getShares
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không phải chủ sở hữu sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc liên kết chia sẻ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Diagram Sharing
+      summary: Tạo liên kết chia sẻ mới
+      description: Tạo liên kết chia sẻ với quyền view (chỉ xem) hoặc edit (chỉnh
+        sửa). Chỉ chủ sở hữu mới có quyền.
+      operationId: createShare
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShareRequest"
+        required: true
+      responses:
+        "201":
+          description: "Đã tạo liên kết, kèm shareToken và shareUrl"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ShareResponse"
+        "400":
+          description: role không phải view/edit
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không phải chủ sở hữu sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc liên kết chia sẻ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+      - bearerAuth: []
+  /api/v1/diagrams/{diagramId}/versions:
+    get:
+      tags:
+      - Diagram versions
+      summary: Danh sách phiên bản đã lưu (mới nhất trước)
+      description: Owner hoặc người có link chia sẻ view/edit.
+      operationId: list
+      parameters:
+      - name: diagramId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không đủ quyền với sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc phiên bản
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "200":
+          description: Danh sách phiên bản
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiagramVersionSummaryResponse"
+    post:
+      tags:
+      - Diagram versions
+      summary: Lưu snapshot dữ liệu hiện tại kèm ghi chú
+      description: Owner hoặc editor.
+      operationId: create_1
+      parameters:
+      - name: diagramId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVersionRequest"
+      responses:
+        "201":
+          description: Đã tạo phiên bản
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DiagramVersionResponse"
+        "400":
+          description: Ghi chú quá 255 ký tự
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: "Sơ đồ đã bị sửa sau version client gửi lên, hoặc có phiên\
+            \ bản khác được lưu cùng lúc; tải lại rồi thử lại"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không đủ quyền với sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc phiên bản
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/diagrams/{diagramId}/versions/{versionId}/restore:
+    post:
+      tags:
+      - Diagram versions
+      summary: Khôi phục sơ đồ về phiên bản đã chọn
+      description: Owner hoặc editor. Trạng thái hiện tại được tự động lưu thành một
+        snapshot sao lưu trước khi ghi đè; version của sơ đồ tăng thêm 1.
+      operationId: restore
+      parameters:
+      - name: diagramId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: versionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Đã khôi phục
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestoreVersionResponse"
+        "409":
+          description: "Sơ đồ vừa bị người khác cập nhật, thử lại"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không đủ quyền với sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc phiên bản
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Auth
+      summary: Đăng ký tài khoản mới
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      security: []
+  /api/v1/auth/refresh-token:
+    post:
+      tags:
+      - Auth
+      summary: Đổi refresh token lấy cặp token mới (token cũ bị thu hồi)
+      operationId: refreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+      security: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Thu hồi refresh token hiện tại
+      operationId: logout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+      security:
+      - bearerAuth: []
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: "Đăng nhập bằng email/mật khẩu, cấp access token và refresh token"
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+      security: []
+  /api/v1/users/me/password:
+    patch:
+      tags:
+      - Users
+      summary: Đổi mật khẩu (yêu cầu mật khẩu cũ)
+      operationId: changePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+      security:
+      - bearerAuth: []
+  /api/v1/diagrams/{id}/shares/{share_id}:
+    delete:
+      tags:
+      - Diagram Sharing
+      summary: Thu hồi liên kết chia sẻ
+      description: Vô hiệu hóa liên kết chia sẻ ngay lập tức. Chỉ chủ sở hữu mới có
+        quyền.
+      operationId: revokeShare
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: share_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không phải chủ sở hữu sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc liên kết chia sẻ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Diagram Sharing
+      summary: Thay đổi mức độ quyền chia sẻ
+      description: Đổi mức quyền (view <-> edit). Chỉ chủ sở hữu mới có quyền.
+      operationId: updateShare
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: share_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShareRequest"
+        required: true
+      responses:
+        "200":
+          description: Đã đổi quyền
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ShareResponse"
+        "400":
+          description: role không phải view/edit
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không phải chủ sở hữu sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc liên kết chia sẻ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+      - bearerAuth: []
+  /api/v1/users/me:
+    get:
+      tags:
+      - Users
+      summary: Lấy thông tin cá nhân
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      security:
+      - bearerAuth: []
+  /api/v1/shares/{token}:
+    get:
+      tags:
+      - Public Sharing
+      summary: Truy xuất thông tin và cấu trúc sơ đồ qua token chia sẻ
+      description: Ai có token hợp lệ đều có thể xem cấu trúc sơ đồ và quyền tương
+        ứng (view/edit).
+      operationId: getSharedDiagram
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SharedDiagramResponse"
+      security: []
+  /api/v1/health:
+    get:
+      tags:
+      - System
+      summary: Kiểm tra dịch vụ và kết nối CSDL
+      operationId: health
+      responses:
+        "200":
+          description: Dịch vụ và CSDL hoạt động
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "503":
+          description: Mất kết nối CSDL
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+      security: []
+  /api/v1/diagrams/{diagramId}/versions/{versionId}:
+    get:
+      tags:
+      - Diagram versions
+      summary: Chi tiết cấu trúc JSON của một phiên bản
+      description: Owner hoặc người có link chia sẻ view/edit.
+      operationId: get
+      parameters:
+      - name: diagramId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: versionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Không đủ quyền với sơ đồ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Không tìm thấy sơ đồ hoặc phiên bản
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "200":
+          description: Chi tiết phiên bản
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DiagramVersionResponse"
+  /api/v1/diagrams/public:
+    get:
+      tags:
+      - Diagrams
+      summary: Danh sách sơ đồ công khai
+      description: Không cần đăng nhập.
+      operationId: getPublicDiagrams
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "200":
+          description: Một trang danh sách sơ đồ công khai (không kèm data)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseDiagramSummaryResponse"
+      security: []
+components:
+  schemas:
+    JsonNode:
+      type: object
+      example:
+        nodes: []
+        edges: []
+    UpdateDiagramRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        diagramType:
+          type: string
+          pattern: UML|ERD
+        version:
+          type: integer
+          format: int32
+        data:
+          $ref: "#/components/schemas/JsonNode"
+          example:
+            nodes: []
+            edges: []
+        isPublic:
+          type: boolean
+      required:
+      - data
+      - diagramType
+      - version
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          format: int32
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+    DiagramResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        diagramType:
+          type: string
+        data:
+          type: string
+          example:
+            nodes: []
+            edges: []
+        version:
+          type: integer
+          format: int32
+        isPublic:
+          type: boolean
+        ownerId:
+          type: string
+          format: uuid
+        updatedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateDiagramRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        diagramType:
+          type: string
+          pattern: UML|ERD
+      required:
+      - diagramType
+    CreateShareRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          description: "Quyền hạn chia sẻ: view (chỉ xem) hoặc edit (chỉnh sửa)"
+          enum:
+          - view
+          - edit
+          example: view
+      required:
+      - role
+    ShareResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Mã định danh liên kết chia sẻ
+        diagramId:
+          type: string
+          format: uuid
+          description: Mã định danh sơ đồ
+        shareToken:
+          type: string
+          description: "Mã token chia sẻ bảo mật, gửi qua header X-Share-Token khi\
+            \ gọi /api/v1/diagrams/{id}..."
+        shareUrl:
+          type: string
+          description: "Đường dẫn chia sẻ chứa token, mở là xem được sơ đồ"
+          example: http://localhost:8080/api/v1/shares/3f9a1c...
+        role:
+          type: string
+          description: Quyền hạn chia sẻ (view hoặc edit)
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời gian tạo liên kết
+    CreateVersionRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          description: Ghi chú phiên bản
+          example: Bản thiết kế ERD Pha 1
+          maxLength: 255
+          minLength: 0
+        version:
+          type: integer
+          format: int32
+          description: "Version sơ đồ client đang thấy (không bắt buộc). Lệch với\
+            \ hiện tại thì 409, tránh chụp nhầm nội dung người khác vừa sửa"
+          example: 6
+    DiagramVersionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          format: int32
+        note:
+          type: string
+        data:
+          type: string
+          example:
+            nodes: []
+            edges: []
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    DiagramVersionSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          format: int32
+        note:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    RestoreVersionResponse:
+      type: object
+      properties:
+        diagramId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        diagramType:
+          type: string
+        data:
+          type: string
+          example:
+            nodes: []
+            edges: []
+        version:
+          type: integer
+          format: int32
+        updatedAt:
+          type: string
+          format: date-time
+        backupVersion:
+          $ref: "#/components/schemas/DiagramVersionSummaryResponse"
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          minLength: 0
+        email:
+          type: string
+          maxLength: 255
+          minLength: 0
+        password:
+          type: string
+          maxLength: 72
+          minLength: 8
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+        newPassword:
+          type: string
+          maxLength: 72
+          minLength: 8
+    UpdateShareRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          description: "Mức độ quyền chia sẻ mới: view (chỉ xem) hoặc edit (chỉnh\
+            \ sửa)"
+          enum:
+          - view
+          - edit
+          example: edit
+      required:
+      - role
+    SharedDiagramResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Mã định danh sơ đồ
+        title:
+          type: string
+          description: Tiêu đề sơ đồ
+        diagramType:
+          type: string
+          description: Loại sơ đồ (UML hoặc ERD)
+        data:
+          type: string
+          description: Cấu trúc dữ liệu các node và edge của sơ đồ
+          example:
+            nodes: []
+            edges: []
+        role:
+          type: string
+          description: Quyền hạn của token truy cập này (view hoặc edit)
+        version:
+          type: integer
+          format: int32
+          description: Phiên bản sơ đồ
+        isPublic:
+          type: boolean
+          description: Trạng thái công khai
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời gian tạo
+        updatedAt:
+          type: string
+          format: date-time
+          description: Thời gian cập nhật gần nhất
+    DiagramSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        diagramType:
+          type: string
+        version:
+          type: integer
+          format: int32
+        isPublic:
+          type: boolean
+        ownerId:
+          type: string
+          format: uuid
+        updatedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PageResponseDiagramSummaryResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagramSummaryResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    shareToken:
+      type: apiKey
+      description: "Token của link chia sẻ (view/edit), lấy từ POST /api/v1/diagrams/{id}/shares"
+      name: X-Share-Token
+      in: header
