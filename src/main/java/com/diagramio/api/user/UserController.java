@@ -1,5 +1,6 @@
 package com.diagramio.api.user;
 
+import com.diagramio.api.CallerResolver;
 import com.diagramio.api.user.dto.ChangePasswordRequest;
 import com.diagramio.api.user.dto.UserResponse;
 import com.diagramio.config.OpenApiConfig;
@@ -8,9 +9,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,15 +32,16 @@ public class UserController {
 
     @GetMapping
     @Operation(summary = "Lấy thông tin cá nhân")
-    public UserResponse me(@AuthenticationPrincipal UUID userId) {
-        return UserResponse.from(userService.getById(userId));
+    public UserResponse me(Authentication authentication) {
+        return UserResponse.from(userService.getById(CallerResolver.requireUserId(authentication)));
     }
 
     @PatchMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Đổi mật khẩu (yêu cầu mật khẩu cũ)")
-    public void changePassword(@AuthenticationPrincipal UUID userId,
+    public void changePassword(Authentication authentication,
                                @Valid @RequestBody ChangePasswordRequest request) {
-        userService.changePassword(userId, request.currentPassword(), request.newPassword());
+        userService.changePassword(CallerResolver.requireUserId(authentication),
+                request.currentPassword(), request.newPassword());
     }
 }

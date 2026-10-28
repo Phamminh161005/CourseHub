@@ -60,13 +60,17 @@ public class ShareService {
 
     /**
      * Thay đổi mức độ quyền chia sẻ (view <-> edit). Chỉ chủ sở hữu mới có quyền đổi.
+     * Dùng một câu UPDATE có điều kiện thay vì đọc-sửa-lưu: nếu link vừa bị thu hồi ở request khác
+     * thì trả 404, không tạo lại link đã thu hồi.
      */
     public DiagramShare updateShareRole(UUID diagramId, UUID shareId, ShareRole newRole, Caller caller) {
         Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
                 "Only the diagram owner can change share roles");
 
-        DiagramShare existingShare = findShareOfDiagram(diagram, shareId);
-        return shareRepository.save(existingShare.withRole(newRole));
+        if (!shareRepository.updateRole(shareId, diagram.getId(), newRole)) {
+            throw new NotFoundException("Share link not found");
+        }
+        return findShareOfDiagram(diagram, shareId);
     }
 
     /**

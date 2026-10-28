@@ -22,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -121,16 +122,29 @@ class ShareServiceTest {
     @DisplayName("Cập nhật quyền liên kết chia sẻ thành công (view -> edit)")
     void updateShareRole_Success() {
         UUID shareId = UUID.randomUUID();
-        DiagramShare oldShare = new DiagramShare(shareId, diagramId, "token123", ShareRole.VIEW, Instant.now());
+        DiagramShare storedAfterUpdate = new DiagramShare(shareId, diagramId, "token123", ShareRole.EDIT, Instant.now());
 
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
-        when(shareRepository.findById(shareId)).thenReturn(Optional.of(oldShare));
-        when(shareRepository.save(any(DiagramShare.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shareRepository.updateRole(shareId, diagramId, ShareRole.EDIT)).thenReturn(true);
+        when(shareRepository.findById(shareId)).thenReturn(Optional.of(storedAfterUpdate));
 
         DiagramShare updated = shareService.updateShareRole(diagramId, shareId, ShareRole.EDIT, Caller.user(ownerId));
 
         assertThat(updated.getRole()).isEqualTo(ShareRole.EDIT);
         assertThat(updated.getShareToken()).isEqualTo("token123");
+        verify(shareRepository, never()).save(any(DiagramShare.class));
+    }
+
+    @Test
+    @DisplayName("Đổi quyền link vừa bị thu hồi trả 404, không tạo lại link")
+    void updateShareRole_RevokedLink_NotFoundAndNotRecreated() {
+        UUID shareId = UUID.randomUUID();
+        when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(sampleDiagram));
+        when(shareRepository.updateRole(shareId, diagramId, ShareRole.EDIT)).thenReturn(false);
+
+        assertThatThrownBy(() -> shareService.updateShareRole(diagramId, shareId, ShareRole.EDIT, Caller.user(ownerId)))
+                .isInstanceOf(NotFoundException.class);
+        verify(shareRepository, never()).save(any(DiagramShare.class));
     }
 
     @Test

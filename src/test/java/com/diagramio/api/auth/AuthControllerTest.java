@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.diagramio.config.SecurityConfig;
+import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.auth.AuthService;
 import com.diagramio.domain.auth.AuthTokens;
 import com.diagramio.domain.exception.ConflictException;
@@ -179,6 +181,14 @@ class AuthControllerTest {
         verify(authService, never()).logout(any(), any());
     }
 
+    @Test
+    void logoutWithOnlyShareLinkReturns401() throws Exception {
+        mockMvc.perform(json(post("/api/v1/auth/logout"), "{\"refreshToken\":\"rt\"}").with(shareLinkOnly()))
+                .andExpect(status().isUnauthorized());
+
+        verify(authService, never()).logout(any(), any());
+    }
+
     private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
         return request.contentType(MediaType.APPLICATION_JSON).content(body);
     }
@@ -186,5 +196,11 @@ class AuthControllerTest {
     /** Giả lập người đã đăng nhập như filter JWT sẽ làm: principal là id người dùng. */
     private static RequestPostProcessor loggedIn() {
         return authentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
+    }
+
+    /** Chỉ cầm link chia sẻ (filter X-Share-Token đặt principal là Caller, không có userId). */
+    private static RequestPostProcessor shareLinkOnly() {
+        return authentication(new UsernamePasswordAuthenticationToken(
+                Caller.shareToken(UUID.randomUUID(), ShareRole.EDIT), null, List.of()));
     }
 }

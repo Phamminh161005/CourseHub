@@ -12,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.diagramio.config.SecurityConfig;
+import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.user.User;
 import com.diagramio.domain.user.UserService;
@@ -135,6 +137,22 @@ class UserControllerTest {
     }
 
     @Test
+    void meWithOnlyShareLinkReturns401() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me").with(shareLinkOnly()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void changePasswordWithOnlyShareLinkReturns401() throws Exception {
+        mockMvc.perform(patch("/api/v1/users/me/password").with(shareLinkOnly())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"uet123456\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isUnauthorized());
+        verify(userService, never()).changePassword(any(), any(), any());
+    }
+
+    @Test
     void changePasswordRequiresAuthentication() throws Exception {
         mockMvc.perform(patch("/api/v1/users/me/password")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -146,5 +164,11 @@ class UserControllerTest {
 
     private static RequestPostProcessor loggedIn() {
         return authentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
+    }
+
+    /** Chỉ cầm link chia sẻ (filter X-Share-Token đặt principal là Caller, không có userId). */
+    private static RequestPostProcessor shareLinkOnly() {
+        return authentication(new UsernamePasswordAuthenticationToken(
+                Caller.shareToken(UUID.randomUUID(), ShareRole.EDIT), null, List.of()));
     }
 }
