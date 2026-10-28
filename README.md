@@ -168,7 +168,11 @@ Kaggle không hỗ trợ Docker nên app được chạy trực tiếp bằng `j
 | Dữ liệu ban đầu | Khởi tạo CSDL trống, tự động tạo 50 tài khoản người dùng động trong quá trình chạy |
 | Kịch bản | Kịch bản tuần tự 8 bước (Đăng ký → Đăng nhập → Tạo sơ đồ → Sửa sơ đồ → Lưu Snapshot → Rollback → Tạo Share → Truy cập Public Share), 50 người dùng ảo (Virtual Users), thời gian chạy 30s |
 
-Cách chạy trên notebook (bật Internet): cài JDK 21 và PostgreSQL bằng `apt-get`, tạo CSDL và tài khoản giống `.env.example`, chạy `java -jar app.jar &` (Flyway tự tạo bảng), rồi chạy công cụ tải vào `http://localhost:8080`. Notebook và script nằm trong repository dự án.
+**Cách vận hành:**
+1. **Tại Server local:** Khởi chạy Backend & Database bằng `docker compose up -d`, sau đó tạo tunnel mã hóa bằng lệnh `npx cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080`. Copy Cloudflare Tunnel (`https://<subdomain>.trycloudflare.com`).
+2. **Tại Kaggle Notebook (bật Internet):** Cài đặt Locust (`pip install locust`), nạp kịch bản `locustfile.py` và chạy lệnh ép tải trỏ `--host` về địa chỉ Cloudflare Tunnel (`https://<subdomain>.trycloudflare.com`).
+
+Link notebook: https://www.kaggle.com/code/hoanggiabao1/diagramio
 
 | Kịch bản | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
