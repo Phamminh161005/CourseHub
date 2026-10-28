@@ -163,16 +163,23 @@ Kaggle không hỗ trợ Docker nên app được chạy trực tiếp bằng `j
 
 | Thông số | Giá trị |
 |---|---|
-| Máy | Kaggle Notebook CPU: _(số vCPU, RAM)_ |
-| Phần mềm | Java 21, PostgreSQL 15, công cụ tải _(k6 hoặc Locust, phiên bản)_ |
-| Dữ liệu ban đầu | _(số người dùng, số sơ đồ, kích thước data)_ |
-| Kịch bản | _(tỉ lệ các request, số người dùng ảo, thời gian chạy)_ |
+| Máy | Kaggle Notebook CPU: 4 vCPU, 16 GB RAM |
+| Phần mềm | Java 21, PostgreSQL 15, công cụ tải Locust (headless) |
+| Dữ liệu ban đầu | Khởi tạo CSDL trống, tự động tạo 50 tài khoản người dùng động trong quá trình chạy |
+| Kịch bản | Kịch bản tuần tự 8 bước (Đăng ký → Đăng nhập → Tạo sơ đồ → Sửa sơ đồ → Lưu Snapshot → Rollback → Tạo Share → Truy cập Public Share), 50 người dùng ảo (Virtual Users), thời gian chạy 30s |
 
-Cách chạy trên notebook (bật Internet): cài JDK 21 và PostgreSQL bằng `apt-get`, tạo CSDL và tài khoản giống `.env.example`, chạy `java -jar app.jar &` (Flyway tự tạo bảng), rồi chạy công cụ tải vào `http://localhost:8080`. Notebook và script nằm trong _(đường dẫn)_.
+Cách chạy trên notebook (bật Internet): cài JDK 21 và PostgreSQL bằng `apt-get`, tạo CSDL và tài khoản giống `.env.example`, chạy `java -jar app.jar &` (Flyway tự tạo bảng), rồi chạy công cụ tải vào `http://localhost:8080`. Notebook và script nằm trong repository dự án.
 
 | Kịch bản | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
-| _(điền sau khi chạy)_ | | | | |
+| POST /api/v1/auth/register | 12.63 | 1000 | 1100 | 0.0% |
+| POST /api/v1/auth/login | 12.63 | 890 | 900 | 0.0% |
+| POST /api/v1/diagrams | 12.63 | 470 | 870 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 12.63 | 420 | 820 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 12.63 | 400 | 790 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 12.63 | 430 | 780 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 12.63 | 350 | 790 | 0.0% |
+| GET /api/v1/shares/[token] | 12.63 | 420 | 520 | 0.0% |
 
 ## 7. Hướng cải tiến cho pha 2
 
