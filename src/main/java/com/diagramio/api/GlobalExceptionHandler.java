@@ -12,13 +12,19 @@ import java.time.Instant;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /** Đổi ngoại lệ nghiệp vụ (và lỗi validate) thành mã HTTP + JSON lỗi thống nhất. */
 @RestControllerAdvice
@@ -52,6 +58,29 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getName() + ": invalid value", request);
     }
 
+    /**
+     * Lỗi do client mà Spring MVC tự phát hiện (sai method, sai Content-Type, thiếu tham số/header,
+     * đường dẫn không tồn tại): giữ mã 4xx Spring đã chọn thay vì rơi xuống 500.
+     */
+    @ExceptionHandler({HttpRequestMethodNotSupportedException.class, HttpMediaTypeNotSupportedException.class,
+            MissingServletRequestParameterException.class, MissingRequestHeaderException.class,
+            NoResourceFoundException.class})
+    public ResponseEntity<ErrorResponse> handleSpringMvc(Exception ex, HttpServletRequest request) {
+        org.springframework.web.ErrorResponse springError = (org.springframework.web.ErrorResponse) ex;
+        HttpStatus status = HttpStatus.valueOf(springError.getStatusCode().value());
+        return ResponseEntity.status(status)
+                .headers(springError.getHeaders())
+                .body(body(status, springError.getBody().getDetail(), request));
+    }
+
+    /** Ràng buộc CSDL (UNIQUE, FK...) bị vi phạm do hai request tranh nhau: 409, không lộ câu SQL. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex,
+                                                             HttpServletRequest request) {
+        log.warn("Data integrity violation on {}: {}", request.getRequestURI(), ex.getMostSpecificCause().getMessage());
+        return build(HttpStatus.CONFLICT, "Request conflicts with existing data, please retry", request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error on {}", request.getRequestURI(), ex);
@@ -78,8 +107,11 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
-        ErrorResponse body = new ErrorResponse(Instant.now(), status.value(), status.getReasonPhrase(),
-                message, request.getRequestURI());
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status).body(body(status, message, request));
+    }
+
+    private static ErrorResponse body(HttpStatus status, String message, HttpServletRequest request) {
+        return new ErrorResponse(Instant.now(), status.value(), status.getReasonPhrase(), message,
+                request.getRequestURI());
     }
 }
