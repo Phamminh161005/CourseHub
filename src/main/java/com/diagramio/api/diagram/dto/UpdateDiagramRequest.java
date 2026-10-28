@@ -5,9 +5,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record UpdateDiagramRequest(
-        @NotBlank String title,
+        @NotBlank @Size(min = 1, max = 255) String title,
         @NotNull @Pattern(regexp = "UML|ERD") String diagramType,
         @NotNull Integer version,
         @NotNull
