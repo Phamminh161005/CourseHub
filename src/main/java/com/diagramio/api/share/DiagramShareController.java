@@ -10,6 +10,7 @@ import com.diagramio.domain.share.DiagramShare;
 import com.diagramio.config.OpenApiConfig;
 import com.diagramio.domain.share.ShareService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -51,6 +52,8 @@ public class DiagramShareController {
     }
 
     @GetMapping
+    @ApiResponse(responseCode = "200", description = "Các liên kết chia sẻ của sơ đồ",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ShareResponse.class))))
     @Operation(summary = "Danh sách liên kết chia sẻ của sơ đồ", description = "Chỉ chủ sở hữu (Owner) mới có quyền truy cập.")
     public ResponseEntity<List<ShareResponse>> getShares(
             @PathVariable("id") UUID diagramId,
@@ -96,6 +99,7 @@ public class DiagramShareController {
     }
 
     @DeleteMapping("/{share_id}")
+    @ApiResponse(responseCode = "204", description = "Đã thu hồi, token mất hiệu lực ngay")
     @Operation(summary = "Thu hồi liên kết chia sẻ", description = "Vô hiệu hóa liên kết chia sẻ ngay lập tức. Chỉ chủ sở hữu mới có quyền.")
     public ResponseEntity<Void> revokeShare(
             @PathVariable("id") UUID diagramId,

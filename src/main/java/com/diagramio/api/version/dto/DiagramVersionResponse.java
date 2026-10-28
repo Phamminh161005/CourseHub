@@ -9,7 +9,7 @@ import java.util.UUID;
 /** Chi tiết một phiên bản, kèm cấu trúc JSON của sơ đồ tại thời điểm đó. */
 public record DiagramVersionResponse(UUID id, UUID diagramId, int versionNumber, String note,
                                      @JsonRawValue
-                                     @Schema(type = "object", example = "{\"nodes\": [], \"edges\": []}")
+                                     @Schema(types = "object", implementation = Object.class, example = "{\"nodes\": [], \"edges\": []}")
                                      String data,
                                      UUID createdBy, Instant createdAt) {
 

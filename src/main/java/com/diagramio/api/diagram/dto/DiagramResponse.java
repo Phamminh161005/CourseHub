@@ -11,7 +11,7 @@ public record DiagramResponse(
         String title,
         String diagramType,
         @JsonRawValue
-        @Schema(type = "object", example = "{\"nodes\": [], \"edges\": []}")
+        @Schema(types = "object", implementation = Object.class, example = "{\"nodes\": [], \"edges\": []}")
         String data,
         Integer version,
         boolean isPublic,

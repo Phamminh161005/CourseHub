@@ -17,8 +17,8 @@ public record SharedDiagramResponse(
         @Schema(description = "Loại sơ đồ (UML hoặc ERD)")
         String diagramType,
 
-        @Schema(description = "Cấu trúc dữ liệu các node và edge của sơ đồ", type = "object",
-                example = "{\"nodes\": [], \"edges\": []}")
+        @Schema(description = "Cấu trúc dữ liệu các node và edge của sơ đồ",
+                types = "object", implementation = Object.class, example = "{\"nodes\": [], \"edges\": []}")
         @JsonRawValue
         String data,
 

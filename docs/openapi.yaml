@@ -297,6 +297,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "200":
+          description: Các liên kết chia sẻ của sơ đồ
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShareResponse"
       security:
       - bearerAuth: []
     post:
@@ -515,11 +523,24 @@ paths:
         required: true
       responses:
         "201":
-          description: Created
+          description: Đã tạo tài khoản
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Thiếu trường, email sai định dạng, mật khẩu ngoài 8-72 ký\
+            \ tự"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email hoặc username đã tồn tại
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security: []
   /api/v1/auth/refresh-token:
     post:
@@ -535,11 +556,23 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Cặp token mới
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Thiếu refresh token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: "Refresh token sai, hết hạn hoặc đã dùng"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security: []
   /api/v1/auth/logout:
     post:
@@ -555,7 +588,19 @@ paths:
         required: true
       responses:
         "204":
-          description: No Content
+          description: Đã thu hồi refresh token
+        "400":
+          description: Thiếu refresh token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập (chỉ cầm token chia sẻ là chưa đủ)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security:
       - bearerAuth: []
   /api/v1/auth/login:
@@ -572,11 +617,23 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Cặp access token và refresh token
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Thiếu email hoặc mật khẩu
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Sai email hoặc mật khẩu
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security: []
   /api/v1/users/me/password:
     patch:
@@ -592,7 +649,19 @@ paths:
         required: true
       responses:
         "204":
-          description: No Content
+          description: Đã đổi mật khẩu
+        "400":
+          description: Mật khẩu cũ sai hoặc mật khẩu mới ngoài 8-72 ký tự
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Chưa đăng nhập (chỉ cầm token chia sẻ là chưa đủ)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security:
       - bearerAuth: []
   /api/v1/diagrams/{id}/shares/{share_id}:
@@ -635,6 +704,8 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "204":
+          description: "Đã thu hồi, token mất hiệu lực ngay"
       security:
       - bearerAuth: []
     patch:
@@ -703,11 +774,17 @@ paths:
       operationId: me
       responses:
         "200":
-          description: OK
+          description: Thông tin tài khoản
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Chưa đăng nhập (chỉ cầm token chia sẻ là chưa đủ)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security:
       - bearerAuth: []
   /api/v1/shares/{token}:
@@ -726,11 +803,17 @@ paths:
           type: string
       responses:
         "200":
-          description: OK
+          description: Sơ đồ và quyền của token (view/edit)
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SharedDiagramResponse"
+        "404":
+          description: Token không tồn tại hoặc đã bị thu hồi
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security: []
   /api/v1/health:
     get:
@@ -845,16 +928,12 @@ paths:
       security: []
 components:
   schemas:
-    JsonNode:
-      type: object
-      example:
-        nodes: []
-        edges: []
     UpdateDiagramRequest:
       type: object
       properties:
         title:
           type: string
+          maxLength: 255
           minLength: 1
         diagramType:
           type: string
@@ -863,7 +942,7 @@ components:
           type: integer
           format: int32
         data:
-          $ref: "#/components/schemas/JsonNode"
+          type: object
           example:
             nodes: []
             edges: []
@@ -899,7 +978,7 @@ components:
         diagramType:
           type: string
         data:
-          type: string
+          type: object
           example:
             nodes: []
             edges: []
@@ -925,6 +1004,7 @@ components:
       properties:
         title:
           type: string
+          maxLength: 255
           minLength: 1
         diagramType:
           type: string
@@ -999,7 +1079,7 @@ components:
         note:
           type: string
         data:
-          type: string
+          type: object
           example:
             nodes: []
             edges: []
@@ -1037,7 +1117,7 @@ components:
         diagramType:
           type: string
         data:
-          type: string
+          type: object
           example:
             nodes: []
             edges: []
@@ -1138,7 +1218,7 @@ components:
           type: string
           description: Loại sơ đồ (UML hoặc ERD)
         data:
-          type: string
+          type: object
           description: Cấu trúc dữ liệu các node và edge của sơ đồ
           example:
             nodes: []
