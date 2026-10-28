@@ -855,6 +855,7 @@ components:
       properties:
         title:
           type: string
+          maxLength: 255
           minLength: 1
         diagramType:
           type: string
@@ -925,6 +926,7 @@ components:
       properties:
         title:
           type: string
+          maxLength: 255
           minLength: 1
         diagramType:
           type: string
