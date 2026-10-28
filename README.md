@@ -159,31 +159,74 @@ Một số việc thường làm khác:
 
 ## 6. Kiểm thử tải trên Kaggle
 
-Kaggle không hỗ trợ Docker nên app được chạy trực tiếp bằng `java -jar` trong notebook. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và cùng kịch bản để so sánh.
+Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 15 và công cụ tải Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Điều này giúp triệt tiêu hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend trên phần cứng chuẩn. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
 
 | Thông số | Giá trị |
 |---|---|
 | Máy | Kaggle Notebook CPU: 4 vCPU, 16 GB RAM |
-| Phần mềm | Java 21, PostgreSQL 15, công cụ tải Locust (headless) |
-| Dữ liệu ban đầu | Khởi tạo CSDL trống, tự động tạo 50 tài khoản người dùng động trong quá trình chạy |
-| Kịch bản | Kịch bản tuần tự 8 bước (Đăng ký → Đăng nhập → Tạo sơ đồ → Sửa sơ đồ → Lưu Snapshot → Rollback → Tạo Share → Truy cập Public Share), 50 người dùng ảo (Virtual Users), thời gian chạy 30s |
+| Phần mềm | Java 21, PostgreSQL 15, Locust (Python 3.13) |
+| Dữ liệu ban đầu | Pre-seed sẵn 100 tài khoản người dùng cố định vào CSDL trước khi đo để tránh nhiễu mã hóa BCrypt |
+| Kịch bản | Tuần tự 7 bước nghiệp vụ chính (Đăng nhập → Tạo sơ đồ → Sửa sơ đồ → Lưu phiên bản → Khôi phục phiên bản → Tạo link chia sẻ → Truy cập link chia sẻ). Làm nóng JVM 60s, đo ở 3 mức tải (10, 50, 100 Virtual Users), mỗi mức 3 phút. |
 
-**Cách vận hành:**
-1. **Tại Server local:** Khởi chạy Backend & Database bằng `docker compose up -d`, sau đó tạo tunnel mã hóa bằng lệnh `npx cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080`. Copy Cloudflare Tunnel (`https://<subdomain>.trycloudflare.com`).
-2. **Tại Kaggle Notebook (bật Internet):** Cài đặt Locust (`pip install locust`), nạp kịch bản `locustfile.py` và chạy lệnh ép tải trỏ `--host` về địa chỉ Cloudflare Tunnel (`https://<subdomain>.trycloudflare.com`).
+### Cách chạy trên Kaggle Notebook:
+1. Cài đặt JDK 21, PostgreSQL 15 và Locust (`pip install locust`).
+2. Chuyển cơ chế xác thực PostgreSQL sang `trust` cho `localhost` và tạo database `diagramio`.
+3. Clone repository, build ứng dụng bằng `./mvnw clean package -DskipTests` và chạy `java -jar app.jar &` (Flyway tự động tạo bảng).
+4. Khởi tạo dữ liệu mẫu (Pre-seed 100 users) và thực thi script Locust đo tải ở các mức 10, 50, 100 users.
 
-Link notebook: https://www.kaggle.com/code/hoanggiabao1/diagramio
+---
 
-| Kịch bản | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
+### Kết quả kiểm thử chi tiết theo từng mức tải
+
+#### 📊 Mức tải 10 Users (Tải nhẹ)
+* **Tổng RPS:** 97.87 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 390 ms | **p99 Tổng:** 410 ms
+
+| Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
-| POST /api/v1/auth/register | 12.63 | 1000 | 1100 | 0.0% |
-| POST /api/v1/auth/login | 12.63 | 890 | 900 | 0.0% |
-| POST /api/v1/diagrams | 12.63 | 470 | 870 | 0.0% |
-| PUT /api/v1/diagrams/[id] | 12.63 | 420 | 820 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions | 12.63 | 400 | 790 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 12.63 | 430 | 780 | 0.0% |
-| POST /api/v1/diagrams/[id]/shares | 12.63 | 350 | 790 | 0.0% |
-| GET /api/v1/shares/[token] | 12.63 | 420 | 520 | 0.0% |
+| POST /api/v1/auth/login | 13.98 | 410 | 410 | 0.0% |
+| POST /api/v1/diagrams | 13.98 | 33 | 33 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 13.98 | 38 | 38 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 13.98 | 42 | 42 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 13.98 | 46 | 46 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 13.98 | 33 | 33 | 0.0% |
+| GET /api/v1/shares/[token] | 13.98 | 21 | 21 | 0.0% |
+
+---
+
+#### 📊 Mức tải 50 Users (Tải trung bình)
+* **Tổng RPS:** 108.39 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 1400 ms | **p99 Tổng:** 1600 ms
+
+| Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
+|---|---|---|---|---|
+| POST /api/v1/auth/login | 15.48 | 1600 | 1600 | 0.0% |
+| POST /api/v1/diagrams | 15.48 | 300 | 360 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 15.48 | 200 | 280 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 15.48 | 200 | 220 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 15.48 | 210 | 240 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 15.48 | 190 | 200 | 0.0% |
+| GET /api/v1/shares/[token] | 15.48 | 110 | 120 | 0.0% |
+
+---
+
+#### 📊 Mức tải 100 Users (Tải cao)
+* **Tổng RPS:** 122.47 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 2000 ms | **p99 Tổng:** 2900 ms
+
+| Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
+|---|---|---|---|---|
+| POST /api/v1/auth/login | 17.50 | 3000 | 3000 | 0.0% |
+| POST /api/v1/diagrams | 17.50 | 560 | 850 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 17.50 | 570 | 580 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 17.50 | 420 | 470 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 17.50 | 360 | 450 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 17.50 | 390 | 460 | 0.0% |
+| GET /api/v1/shares/[token] | 17.50 | 260 | 350 | 0.0% |
+
+---
+
+### 💡 Nhận xét & Đánh giá hiệu năng Baseline
+1. **Độ ổn định cao:** Hệ thống duy trì **Tỉ lệ lỗi 0.0%** trên tất cả các API ngay cả khi tải tăng lên mức 100 Virtual Users đồng thời.
+2. **Điểm nghẽn CPU (Bottleneck):** Endpoint `POST /api/v1/auth/login` có thời gian phản hồi cao nhất (p95 tăng từ 410ms → 1600ms → 3000ms) do tác vụ kiểm tra mật khẩu BCrypt tiêu tốn nhiều tài nguyên CPU.
+3. **Hiệu năng CRUD sơ đồ:** Các API xử lý sơ đồ, khôi phục phiên bản và chia sẻ liên kết giữ độ trễ mượt mà (chỉ từ 21ms – 570ms ở p95), đáp ứng tốt nhu cầu thao tác thời gian thực.
 
 ## 7. Hướng cải tiến cho pha 2
 
