@@ -113,11 +113,13 @@ Mọi lỗi trả cùng một khung JSON:
 
 | Mã | Khi nào |
 |---|---|
-| 400 | Thiếu trường, sai định dạng, `data` sai cấu trúc hoặc quá 2 MB, `size` lớn hơn 100, mật khẩu cũ sai |
-| 401 | Chưa xác thực, token sai hoặc hết hạn, sai email hoặc mật khẩu |
+| 400 | Thiếu trường, sai định dạng, `title` dài hơn 255 ký tự, `data` sai cấu trúc hoặc quá 2 MB, `size` lớn hơn 100, mật khẩu cũ sai |
+| 401 | Chưa xác thực, token sai hoặc hết hạn, sai email hoặc mật khẩu; chỉ cầm `X-Share-Token` khi gọi endpoint cần tài khoản (`/users/me`, đăng xuất, sơ đồ của tôi, quản lý link) |
 | 403 | Đã biết người gọi nhưng không đủ quyền với sơ đồ |
-| 404 | Không tìm thấy sơ đồ, phiên bản, link; token chia sẻ đã bị thu hồi |
+| 404 | Không tìm thấy sơ đồ, phiên bản, link, đường dẫn; token chia sẻ đã bị thu hồi |
+| 405 | Sai method HTTP (header `Allow` liệt kê method hợp lệ) |
 | 409 | Lệch `version` khi cập nhật hoặc lưu phiên bản; email hay username đã tồn tại |
+| 415 | Sai `Content-Type` (API nhận `application/json`) |
 | 503 | `/health` khi mất kết nối CSDL |
 
 ## 5. Cách chạy
@@ -153,7 +155,11 @@ curl -s -X POST localhost:8080/api/v1/diagrams -H "Authorization: Bearer $TOKEN"
 
 Một số việc thường làm khác:
 
-- Chạy test: `./mvnw test`. Các test CSDL dùng Testcontainers nên cần Docker đang chạy; không có Docker thì các test này tự bỏ qua.
+- Chạy test: `./mvnw test` (cần Docker đang chạy). Có ba nhóm test:
+  - Unit test và test controller (MockMvc): chạy được ở mọi máy.
+  - Test CSDL trong `infrastructure` (Testcontainers): không có Docker thì tự bỏ qua.
+  - Test E2E hộp đen trong `src/test/java/com/diagramio/e2e`: khởi động cả app trên cổng ngẫu nhiên với PostgreSQL thật và chỉ gọi API qua HTTP, kiểm tra mọi endpoint với từng vai trò (chủ, link edit, link view, người khác, khách). Nhóm này cố ý báo lỗi khi không có Docker để không "xanh giả". Chạy riêng: `./mvnw test -Dtest='com.diagramio.e2e.**'`; bỏ qua: `./mvnw test -Dtest='!com.diagramio.e2e.**'`.
+  - Dùng JDK mới hơn 21 (ví dụ 25) thì thêm `-DargLine="-Dnet.bytebuddy.experimental=true"` để Mockito chạy được.
 - Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`.
 - Thay đổi CSDL: thêm file migration mới dạng `V<số>__mo_ta.sql` (hai dấu gạch dưới) trong `src/main/resources/db/migration`, không sửa các file đã có.
 
