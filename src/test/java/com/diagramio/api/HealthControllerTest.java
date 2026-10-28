@@ -1,5 +1,6 @@
 package com.diagramio.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -62,6 +63,15 @@ class HealthControllerTest {
     void publicEndpointStillWorksWithInvalidToken() throws Exception {
         mockMvc.perform(get("/api/v1/health").header("Authorization", "Bearer invalid"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void openApiDocsArePublic() throws Exception {
+        // springdoc không được nạp đầy đủ trong WebMvcTest; chỉ cần chắc security không chặn (401/403)
+        for (String path : new String[] {"/v3/api-docs", "/v3/api-docs.yaml"}) {
+            mockMvc.perform(get(path))
+                    .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
+        }
     }
 
     @Test
