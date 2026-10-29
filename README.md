@@ -85,12 +85,12 @@ Mọi endpoint có tiền tố `/api/v1`. Đặc tả đầy đủ (request, res
 | | DELETE | `/diagrams/{id}` | Xóa sơ đồ | Chủ |
 | Phiên bản | GET | `/diagrams/{id}/versions` | Danh sách phiên bản, mới nhất trước | Chủ hoặc có link |
 | | POST | `/diagrams/{id}/versions` | Lưu phiên bản mới kèm ghi chú | Chủ hoặc link edit |
-| | GET | `/diagrams/{id}/versions/{versionId}` | Chi tiết một phiên bản | Chủ hoặc có link |
-| | POST | `/diagrams/{id}/versions/{versionId}/restore` | Khôi phục về phiên bản đã chọn | Chủ hoặc link edit |
+| | GET | `/diagrams/{id}/versions/{version_id}` | Chi tiết một phiên bản | Chủ hoặc có link |
+| | POST | `/diagrams/{id}/versions/{version_id}/restore` | Khôi phục về phiên bản đã chọn | Chủ hoặc link edit |
 | Chia sẻ | GET | `/diagrams/{id}/shares` | Danh sách link chia sẻ | Chủ |
 | | POST | `/diagrams/{id}/shares` | Tạo link quyền `view` hoặc `edit` | Chủ |
-| | PATCH | `/diagrams/{id}/shares/{shareId}` | Đổi quyền của link | Chủ |
-| | DELETE | `/diagrams/{id}/shares/{shareId}` | Thu hồi link | Chủ |
+| | PATCH | `/diagrams/{id}/shares/{share_id}` | Đổi quyền của link | Chủ |
+| | DELETE | `/diagrams/{id}/shares/{share_id}` | Thu hồi link | Chủ |
 | | GET | `/shares/{token}` | Mở link chia sẻ: trả sơ đồ và quyền | Công khai |
 | Hệ thống | GET | `/health` | Trạng thái dịch vụ và kết nối CSDL | Công khai |
 
@@ -160,7 +160,7 @@ Một số việc thường làm khác:
   - Test CSDL trong `infrastructure` (Testcontainers): không có Docker thì tự bỏ qua.
   - Test E2E hộp đen trong `src/test/java/com/diagramio/e2e`: khởi động cả app trên cổng ngẫu nhiên với PostgreSQL thật và chỉ gọi API qua HTTP, kiểm tra mọi endpoint với từng vai trò (chủ, link edit, link view, người khác, khách). Nhóm này cố ý báo lỗi khi không có Docker để không "xanh giả". Chạy riêng: `./mvnw test -Dtest='com.diagramio.e2e.**'`; bỏ qua: `./mvnw test -Dtest='!com.diagramio.e2e.**'`.
   - Dùng JDK mới hơn 21 (ví dụ 25) thì thêm `-DargLine="-Dnet.bytebuddy.experimental=true"` để Mockito chạy được.
-- Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`.
+- Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`. Khóa được sắp xếp cố định và server là URL tương đối, nên file chỉ thay đổi khi API thay đổi; diff khác rỗng nghĩa là phải commit lại file này.
 - Thay đổi CSDL: thêm file migration mới dạng `V<số>__mo_ta.sql` (hai dấu gạch dưới) trong `src/main/resources/db/migration`, không sửa các file đã có.
 
 ## 6. Kiểm thử tải trên Kaggle

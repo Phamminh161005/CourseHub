@@ -92,7 +92,7 @@ Snapshot là bản chụp cố định của `data` tại thời điểm lưu, �
 
 ## 6. Khôi phục phiên bản
 
-Endpoint: `POST /diagrams/{id}/versions/{versionId}/restore`.
+Endpoint: `POST /diagrams/{id}/versions/{version_id}/restore`.
 
 Khôi phục là chép `data` của một snapshot cũ vào sơ đồ hiện tại. Theo đặc tả, trạng thái hiện tại phải được tự động sao lưu trước, để nếu khôi phục nhầm thì vẫn lấy lại được.
 
@@ -105,7 +105,7 @@ Khôi phục là chép `data` của một snapshot cũ vào sơ đồ hiện t�
 
 ## 7. Vòng đời link chia sẻ
 
-Endpoint: `POST /diagrams/{id}/shares` (tạo link), `GET /shares/{token}` (mở link), `PATCH` và `DELETE /diagrams/{id}/shares/{shareId}` (đổi quyền, thu hồi).
+Endpoint: `POST /diagrams/{id}/shares` (tạo link), `GET /shares/{token}` (mở link), `PATCH` và `DELETE /diagrams/{id}/shares/{share_id}` (đổi quyền, thu hồi).
 
 Chia sẻ hoạt động giống Google Docs: chủ sơ đồ tạo link với quyền view hoặc edit, ai có link thì dùng được, không bắt buộc đăng nhập.
 

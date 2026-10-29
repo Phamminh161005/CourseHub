@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
-@RequestMapping("/api/v1/diagrams/{diagramId}/versions")
+@RequestMapping("/api/v1/diagrams/{id}/versions")
 @Tag(name = "Diagram versions", description = "Lịch sử phiên bản (snapshot bất biến) và khôi phục sơ đồ")
 @ApiResponse(responseCode = "401", description = "Chưa đăng nhập",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -48,7 +48,7 @@ public class DiagramVersionController {
     @Operation(summary = "Danh sách phiên bản đã lưu (mới nhất trước)",
             description = "Owner hoặc người có link chia sẻ view/edit.")
     @ApiResponse(responseCode = "200", description = "Danh sách phiên bản")
-    public List<DiagramVersionSummaryResponse> list(@PathVariable UUID diagramId, Authentication authentication) {
+    public List<DiagramVersionSummaryResponse> list(@PathVariable("id") UUID diagramId, Authentication authentication) {
         return versionService.listVersions(diagramId, CallerResolver.resolve(authentication)).stream()
                 .map(DiagramVersionSummaryResponse::from)
                 .toList();
@@ -62,7 +62,7 @@ public class DiagramVersionController {
     @ApiResponse(responseCode = "409", description = "Sơ đồ đã bị sửa sau version client gửi lên, "
             + "hoặc có phiên bản khác được lưu cùng lúc; tải lại rồi thử lại",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public ResponseEntity<DiagramVersionResponse> create(@PathVariable UUID diagramId,
+    public ResponseEntity<DiagramVersionResponse> create(@PathVariable("id") UUID diagramId,
                                                          @Valid @RequestBody(required = false)
                                                          CreateVersionRequest request,
                                                          Authentication authentication) {
@@ -77,24 +77,24 @@ public class DiagramVersionController {
         return ResponseEntity.created(location).body(DiagramVersionResponse.from(version));
     }
 
-    @GetMapping("/{versionId}")
+    @GetMapping("/{version_id}")
     @Operation(summary = "Chi tiết cấu trúc JSON của một phiên bản",
             description = "Owner hoặc người có link chia sẻ view/edit.")
     @ApiResponse(responseCode = "200", description = "Chi tiết phiên bản")
-    public DiagramVersionResponse get(@PathVariable UUID diagramId, @PathVariable UUID versionId,
+    public DiagramVersionResponse get(@PathVariable("id") UUID diagramId, @PathVariable("version_id") UUID versionId,
                                       Authentication authentication) {
         return DiagramVersionResponse.from(
                 versionService.getVersion(diagramId, versionId, CallerResolver.resolve(authentication)));
     }
 
-    @PostMapping("/{versionId}/restore")
+    @PostMapping("/{version_id}/restore")
     @Operation(summary = "Khôi phục sơ đồ về phiên bản đã chọn",
             description = "Owner hoặc editor. Trạng thái hiện tại được tự động lưu thành một snapshot sao lưu "
                     + "trước khi ghi đè; version của sơ đồ tăng thêm 1.")
     @ApiResponse(responseCode = "200", description = "Đã khôi phục")
     @ApiResponse(responseCode = "409", description = "Sơ đồ vừa bị người khác cập nhật, thử lại",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public RestoreVersionResponse restore(@PathVariable UUID diagramId, @PathVariable UUID versionId,
+    public RestoreVersionResponse restore(@PathVariable("id") UUID diagramId, @PathVariable("version_id") UUID versionId,
                                           Authentication authentication) {
         return RestoreVersionResponse.from(
                 versionService.restore(diagramId, versionId, CallerResolver.resolve(authentication)));
