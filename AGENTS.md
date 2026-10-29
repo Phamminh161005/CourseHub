@@ -67,6 +67,18 @@
 - Treat saved diagram versions as immutable snapshots.
 - Before restoring an old version, snapshot the current state, then copy the selected snapshot into the current diagram state atomically.
 - Keep authorization checks, version checks, and related writes within the appropriate transaction boundaries.
+- Use transactions by rule, not everywhere. Domain services get them through the `TransactionRunner` port:
+
+| Operation | Transaction | Example |
+|---|---|---|
+| Read, check, then write | Yes (`TransactionRunner`) | restore a version, rotate a refresh token |
+| Several rows or tables that must stay consistent | Yes | restore = backup snapshot + overwrite diagram |
+| Concurrent requests must queue | Yes, plus a row lock (`SELECT ... FOR UPDATE`) | save or restore a version |
+| One write that is already safe on its own | No | delete a share; update a diagram (guarded by `@Version`); change a share role (one conditional `UPDATE`) |
+| Pure reads | No | get a diagram, list versions |
+| Calls to outside systems (email, HTTP, files) | Never inside a transaction | do them after commit |
+
+- Keep transactions short: each one holds a pooled connection and any row locks until it ends.
 
 ## Implementation Practices
 
