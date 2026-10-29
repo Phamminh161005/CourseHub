@@ -1,6 +1,7 @@
 package com.diagramio.infrastructure.diagram;
 
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramType;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,7 +14,7 @@ public class DiagramMapper {
         return new Diagram(
                 entity.getId(),
                 entity.getTitle(),
-                entity.getDiagramType(),
+                entity.getDiagramType() == null ? null : DiagramType.valueOf(entity.getDiagramType()),
                 entity.getData(),
                 entity.getVersion(),
                 entity.isPublic(),
@@ -30,7 +31,7 @@ public class DiagramMapper {
         DiagramEntity entity = new DiagramEntity();
         entity.setId(diagram.getId());
         entity.setTitle(diagram.getTitle());
-        entity.setDiagramType(diagram.getDiagramType());
+        entity.setDiagramType(diagram.getDiagramType() == null ? null : diagram.getDiagramType().name());
         entity.setData(diagram.getData());
         entity.setVersion(diagram.getVersion());
         entity.setPublic(diagram.isPublic());

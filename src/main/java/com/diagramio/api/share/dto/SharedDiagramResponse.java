@@ -41,7 +41,7 @@ public record SharedDiagramResponse(
         return new SharedDiagramResponse(
                 view.getDiagramId(),
                 view.getTitle(),
-                view.getDiagramType(),
+                view.getDiagramType().name(),
                 view.getData(),
                 view.getRole().value(),
                 view.getVersion(),

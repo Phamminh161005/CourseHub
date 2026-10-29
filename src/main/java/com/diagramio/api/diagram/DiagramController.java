@@ -11,6 +11,7 @@ import com.diagramio.config.OpenApiConfig;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramService;
+import com.diagramio.domain.diagram.DiagramType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -61,8 +62,9 @@ public class DiagramController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @CurrentUser UUID ownerId) {
-        List<Diagram> diagrams = diagramService.getDiagramsByOwner(ownerId, diagramType, title, page, size);
-        long total = diagramService.countDiagramsByOwner(ownerId, diagramType, title);
+        DiagramType typeFilter = diagramType == null || diagramType.isBlank() ? null : DiagramType.from(diagramType);
+        List<Diagram> diagrams = diagramService.getDiagramsByOwner(ownerId, typeFilter, title, page, size);
+        long total = diagramService.countDiagramsByOwner(ownerId, typeFilter, title);
         return pageResponse(diagrams, page, size, total);
     }
 
@@ -76,7 +78,7 @@ public class DiagramController {
             @CurrentUser UUID ownerId) {
         Diagram diagram = new Diagram();
         diagram.setTitle(request.title());
-        diagram.setDiagramType(request.diagramType());
+        diagram.setDiagramType(DiagramType.from(request.diagramType()));
         diagram.setOwnerId(ownerId);
         Diagram created = diagramService.createDiagram(diagram);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -125,7 +127,8 @@ public class DiagramController {
             @Valid @RequestBody UpdateDiagramRequest request,
             Caller caller) {
         return DiagramResponse.from(diagramService.updateDiagram(
-                id, request.title(), request.diagramType(), request.data().toString(), request.isPublic(),
+                id, request.title(), DiagramType.from(request.diagramType()), request.data().toString(),
+                request.isPublic(),
                 caller, request.version()));
     }
 

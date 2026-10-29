@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import com.diagramio.domain.share.DiagramShare;
@@ -160,7 +161,7 @@ class JpaRepositoriesIntegrationTest {
 
     private Diagram newDiagram() {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        Diagram diagram = new Diagram(null, "Shop ERD", "ERD", DATA, 1, false, SEED_USER, SEED_USER, now, now);
+        Diagram diagram = new Diagram(null, "Shop ERD", DiagramType.ERD, DATA, 1, false, SEED_USER, SEED_USER, now, now);
         return diagramRepository.save(diagram);
     }
 

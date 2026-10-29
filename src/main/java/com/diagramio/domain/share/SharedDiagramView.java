@@ -1,6 +1,7 @@
 package com.diagramio.domain.share;
 
 import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.diagram.DiagramType;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -13,7 +14,7 @@ public class SharedDiagramView {
 
     private final UUID diagramId;
     private final String title;
-    private final String diagramType;
+    private final DiagramType diagramType;
     private final String data;
     private final ShareRole role;
     private final int version;
@@ -21,7 +22,7 @@ public class SharedDiagramView {
     private final Instant createdAt;
     private final Instant updatedAt;
 
-    public SharedDiagramView(UUID diagramId, String title, String diagramType, String data,
+    public SharedDiagramView(UUID diagramId, String title, DiagramType diagramType, String data,
                              ShareRole role, int version, boolean isPublic,
                              Instant createdAt, Instant updatedAt) {
         this.diagramId = Objects.requireNonNull(diagramId, "diagramId must not be null");
@@ -43,7 +44,7 @@ public class SharedDiagramView {
         return title;
     }
 
-    public String getDiagramType() {
+    public DiagramType getDiagramType() {
         return diagramType;
     }
 

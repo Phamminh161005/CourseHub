@@ -21,7 +21,7 @@ public record DiagramResponse(
         Instant updatedAt) {
 
     public static DiagramResponse from(Diagram diagram) {
-        return new DiagramResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType(),
+        return new DiagramResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType().name(),
                 diagram.getData(), diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(),
                 diagram.getUpdatedBy(), diagram.getCreatedAt(), diagram.getUpdatedAt());
     }

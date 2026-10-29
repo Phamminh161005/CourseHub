@@ -3,13 +3,14 @@ package com.diagramio.domain.access;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramType;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class CallerTest {
 
     private final UUID ownerId = UUID.randomUUID();
-    private final Diagram diagram = new Diagram(UUID.randomUUID(), "ERD", "ERD", "{}", 1, false, ownerId,
+    private final Diagram diagram = new Diagram(UUID.randomUUID(), "ERD", DiagramType.ERD, "{}", 1, false, ownerId,
             null, null, null);
 
     @Test

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.DiagramNotFoundException;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.UnauthorizedException;
@@ -33,7 +34,7 @@ class DiagramAccessTest {
 
     @BeforeEach
     void setUp() {
-        diagram = new Diagram(diagramId, "ERD", "ERD", "{\"nodes\": [], \"edges\": []}", 1, false, ownerId,
+        diagram = new Diagram(diagramId, "ERD", DiagramType.ERD, "{\"nodes\": [], \"edges\": []}", 1, false, ownerId,
                 null, null, null);
         when(repository.findById(diagramId)).thenReturn(Optional.of(diagram));
         owner = Caller.user(ownerId);

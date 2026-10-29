@@ -16,7 +16,7 @@ public record DiagramSummaryResponse(
         Instant updatedAt) {
 
     public static DiagramSummaryResponse from(Diagram diagram) {
-        return new DiagramSummaryResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType(),
+        return new DiagramSummaryResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType().name(),
                 diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(), diagram.getUpdatedBy(),
                 diagram.getCreatedAt(), diagram.getUpdatedAt());
     }

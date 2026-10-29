@@ -14,6 +14,7 @@ import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
@@ -52,7 +53,7 @@ class DiagramVersionServiceTest {
 
     @BeforeEach
     void setUp() {
-        diagram = new Diagram(diagramId, "Shop ERD", "ERD", CURRENT_DATA, 5, false, ownerId, ownerId,
+        diagram = new Diagram(diagramId, "Shop ERD", DiagramType.ERD, CURRENT_DATA, 5, false, ownerId, ownerId,
                 NOW.minusSeconds(3600), NOW.minusSeconds(60));
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(diagram));
         when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

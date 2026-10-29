@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import com.diagramio.domain.version.RestoreResult;
@@ -90,7 +91,7 @@ class DiagramVersionConcurrencyTest {
 
     private Diagram newDiagram(String data) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        return diagramRepository.save(new Diagram(null, "race", "ERD", data, 1, false, SEED_USER, SEED_USER, now, now));
+        return diagramRepository.save(new Diagram(null, "race", DiagramType.ERD, data, 1, false, SEED_USER, SEED_USER, now, now));
     }
 
     /** Chạy n tác vụ cùng một thời điểm và trả về kết quả; ném lỗi nếu có tác vụ thất bại. */

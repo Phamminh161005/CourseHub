@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
@@ -41,7 +42,7 @@ class DiagramServiceTest {
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Diagram diagram = new Diagram();
         diagram.setTitle("Orders");
-        diagram.setDiagramType("ERD");
+        diagram.setDiagramType(DiagramType.ERD);
         diagram.setData(null);
         diagram.setPublic(true);
 
@@ -61,7 +62,7 @@ class DiagramServiceTest {
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Diagram updated = service.updateDiagram(
-                id, "Updated", "UML", "{\"nodes\": [], \"edges\": []}", false,
+                id, "Updated", DiagramType.UML, "{\"nodes\": [], \"edges\": []}", false,
                 Caller.user(current.getOwnerId()), 3);
 
         // Domain giữ nguyên version đã đối chiếu; @Version ở tầng persistence tăng lên 4 khi ghi
@@ -77,7 +78,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
 
         assertThrows(OptimisticLockConflictException.class, () -> service.updateDiagram(
-                id, "Updated", "UML", "{\"nodes\": [], \"edges\": []}", false,
+                id, "Updated", DiagramType.UML, "{\"nodes\": [], \"edges\": []}", false,
                 Caller.user(current.getOwnerId()), 2));
 
         verify(repository, never()).save(any(Diagram.class));
@@ -95,7 +96,7 @@ class DiagramServiceTest {
         for (String data : new String[] {"{\"foo\": 1}", "{\"nodes\": \"abc\", \"edges\": []}",
                 "{\"nodes\": []}", "\"{\\\"nodes\\\": []}\"", "[]", "not json"}) {
             InvalidInputException ex = assertThrows(InvalidInputException.class,
-                    () -> service.updateDiagram(id, "Orders", "ERD", data, false, owner, 1), data);
+                    () -> service.updateDiagram(id, "Orders", DiagramType.ERD, data, false, owner, 1), data);
             assertTrue(ex.getMessage().startsWith("data must be"), data);
         }
         verify(repository, never()).save(any(Diagram.class));
@@ -120,7 +121,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
         assertThrows(ForbiddenException.class, () -> service.updateDiagram(
-                id, "Hacked", "ERD", DiagramService.DEFAULT_DATA, false, Caller.user(UUID.randomUUID()), 1));
+                id, "Hacked", DiagramType.ERD, DiagramService.DEFAULT_DATA, false, Caller.user(UUID.randomUUID()), 1));
 
         verify(repository, never()).save(any(Diagram.class));
     }
@@ -131,7 +132,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
         assertThrows(ForbiddenException.class, () -> service.updateDiagram(
-                id, "Updated", "ERD", DiagramService.DEFAULT_DATA, false,
+                id, "Updated", DiagramType.ERD, DiagramService.DEFAULT_DATA, false,
                 Caller.shareToken(id, ShareRole.VIEW), 1));
 
         verify(repository, never()).save(any(Diagram.class));
@@ -143,7 +144,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Diagram updated = service.updateDiagram(id, "Updated", "ERD", DiagramService.DEFAULT_DATA, true,
+        Diagram updated = service.updateDiagram(id, "Updated", DiagramType.ERD, DiagramService.DEFAULT_DATA, true,
                 Caller.shareToken(id, ShareRole.EDIT), 1);
 
         assertEquals("Updated", updated.getTitle());
@@ -158,7 +159,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Diagram updated = service.updateDiagram(id, "Updated", "ERD", DiagramService.DEFAULT_DATA, false,
+        Diagram updated = service.updateDiagram(id, "Updated", DiagramType.ERD, DiagramService.DEFAULT_DATA, false,
                 new Caller(editorId, id, ShareRole.EDIT), 1);
 
         assertEquals(editorId, updated.getUpdatedBy());
@@ -171,7 +172,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Diagram updated = service.updateDiagram(id, "Orders", "ERD", DiagramService.DEFAULT_DATA, true,
+        Diagram updated = service.updateDiagram(id, "Orders", DiagramType.ERD, DiagramService.DEFAULT_DATA, true,
                 Caller.user(current.getOwnerId()), 1);
 
         assertTrue(updated.isPublic());
@@ -229,7 +230,7 @@ class DiagramServiceTest {
     }
 
     private Diagram diagram(UUID id, int version) {
-        return new Diagram(id, "Orders", "ERD", DiagramService.DEFAULT_DATA, version,
+        return new Diagram(id, "Orders", DiagramType.ERD, DiagramService.DEFAULT_DATA, version,
                 false, UUID.randomUUID(), null, null, null);
     }
 }

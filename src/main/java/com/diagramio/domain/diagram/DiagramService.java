@@ -20,8 +20,6 @@ public class DiagramService {
     public static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_DATA_BYTES = 2 * 1024 * 1024;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String UML = "UML";
-    private static final String ERD = "ERD";
 
     private final DiagramRepository repository;
     private final DiagramAccess access;
@@ -35,7 +33,7 @@ public class DiagramService {
         if (diagram == null) {
             throw new InvalidInputException("Diagram is required");
         }
-        validateDiagramType(diagram.getDiagramType());
+        requireType(diagram.getDiagramType());
         String data = diagram.getData();
         if (data == null || data.isBlank()) {
             data = DEFAULT_DATA;
@@ -56,14 +54,14 @@ public class DiagramService {
      * người sửa qua link gửi isPublic khác thì giữ nguyên giá trị cũ.
      * updatedBy là người đăng nhập, NULL nếu sửa qua link mà không đăng nhập.
      */
-    public Diagram updateDiagram(UUID id, String title, String diagramType, String data,
+    public Diagram updateDiagram(UUID id, String title, DiagramType diagramType, String data,
                                  boolean isPublic, Caller caller, Integer requestVersion) {
         if (id == null) {
             throw new InvalidInputException("Diagram id is required");
         }
         Diagram current = access.require(id, caller, Permission.EDIT);
         checkVersion(id, requestVersion, current.getVersion());
-        validateDiagramType(diagramType);
+        requireType(diagramType);
         validateJson(data);
 
         current.setTitle(title);
@@ -86,20 +84,15 @@ public class DiagramService {
         return access.require(id, caller, Permission.VIEW);
     }
 
-    public List<Diagram> getDiagramsByOwner(UUID ownerId, String diagramType, String title,
+    /** diagramType null = mọi loại. */
+    public List<Diagram> getDiagramsByOwner(UUID ownerId, DiagramType diagramType, String title,
                                             int page, int size) {
         validatePage(page, size);
-        if (diagramType != null && !diagramType.isBlank()) {
-            validateDiagramType(diagramType);
-        }
-        return repository.findByOwnerId(ownerId, normalizeFilter(diagramType), normalizeFilter(title), page, size);
+        return repository.findByOwnerId(ownerId, diagramType, normalizeFilter(title), page, size);
     }
 
-    public long countDiagramsByOwner(UUID ownerId, String diagramType, String title) {
-        if (diagramType != null && !diagramType.isBlank()) {
-            validateDiagramType(diagramType);
-        }
-        return repository.countByOwnerId(ownerId, normalizeFilter(diagramType), normalizeFilter(title));
+    public long countDiagramsByOwner(UUID ownerId, DiagramType diagramType, String title) {
+        return repository.countByOwnerId(ownerId, diagramType, normalizeFilter(title));
     }
 
     public List<Diagram> getPublicDiagrams(int page, int size) {
@@ -117,8 +110,8 @@ public class DiagramService {
         }
     }
 
-    private void validateDiagramType(String diagramType) {
-        if (!UML.equals(diagramType) && !ERD.equals(diagramType)) {
+    private void requireType(DiagramType diagramType) {
+        if (diagramType == null) {
             throw new InvalidInputException("diagramType must be UML or ERD");
         }
     }

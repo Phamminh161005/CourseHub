@@ -4,6 +4,7 @@ import com.diagramio.api.GlobalExceptionHandler;
 import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.share.DiagramShare;
 import com.diagramio.domain.share.SharedDiagramView;
 import com.diagramio.domain.share.ShareService;
@@ -61,7 +62,7 @@ class DiagramShareControllerTest {
         SharedDiagramView view = new SharedDiagramView(
                 diagramId,
                 "Sơ đồ ERD bán hàng",
-                "ERD",
+                DiagramType.ERD,
                 "{\"nodes\":[], \"edges\":[]}",
                 ShareRole.VIEW,
                 1,
