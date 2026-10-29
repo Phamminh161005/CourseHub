@@ -157,18 +157,18 @@ Một số việc thường làm khác:
 - Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`.
 - Thay đổi CSDL: thêm file migration mới dạng `V<số>__mo_ta.sql` (hai dấu gạch dưới) trong `src/main/resources/db/migration`, không sửa các file đã có.
 
-## 6. Kiểm thử tải trên Kaggle
+## 6. Kiểm thử tải trên Kaggle\
 
-Link Notebook: https://www.kaggle.com/code/hoanggiabao1/diagramio
+Link notebook: https://www.kaggle.com/code/minhwayne/diagramio
 
-Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 15 và công cụ tải Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Điều này giúp triệt tiêu hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend trên phần cứng chuẩn. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
+Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 15 và công cụ Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Việc kiểm thử trên `localhost` giúp loại bỏ hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
 
 | Thông số | Giá trị |
 |---|---|
 | Máy | Kaggle Notebook CPU: 4 vCPU, 16 GB RAM |
 | Phần mềm | Java 21, PostgreSQL 15, Locust (Python 3.13) |
-| Dữ liệu ban đầu | Pre-seed sẵn 100 tài khoản người dùng cố định vào CSDL trước khi đo để tránh nhiễu mã hóa BCrypt |
-| Kịch bản | Tuần tự 7 bước nghiệp vụ chính (Đăng nhập → Tạo sơ đồ → Sửa sơ đồ → Lưu phiên bản → Khôi phục phiên bản → Tạo link chia sẻ → Truy cập link chia sẻ). Làm nóng JVM 60s, đo ở 3 mức tải (10, 50, 100 Virtual Users), mỗi mức 3 phút. |
+| Dữ liệu ban đầu | Pre-seed sẵn 100 tài khoản cố định vào CSDL trước khi đo |
+| Kịch bản | **Mỗi Virtual User đăng nhập 1 lần duy nhất lúc khởi tạo (`on_start`), sau đó chạy lặp liên tục chuỗi 5 bước nghiệp vụ (Tạo sơ đồ → Sửa & Snapshot → Khôi phục → Tạo link chia sẻ → Truy cập link chia sẻ) cho đến hết thời gian đo.** |
 
 ### Cách chạy trên Kaggle Notebook:
 1. Cài đặt JDK 21, PostgreSQL 15 và Locust (`pip install locust`).
@@ -181,54 +181,57 @@ Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQ
 ### Kết quả kiểm thử chi tiết theo từng mức tải
 
 #### 📊 Mức tải 10 Users (Tải nhẹ)
-* **Tổng RPS:** 97.87 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 390 ms | **p99 Tổng:** 410 ms
+* **Tổng RPS:** 329.78 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 7 ms | **p99 Tổng:** 9 ms
 
 | Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
-| POST /api/v1/auth/login | 13.98 | 410 | 410 | 0.0% |
-| POST /api/v1/diagrams | 13.98 | 33 | 33 | 0.0% |
-| PUT /api/v1/diagrams/[id] | 13.98 | 38 | 38 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions | 13.98 | 42 | 42 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 13.98 | 46 | 46 | 0.0% |
-| POST /api/v1/diagrams/[id]/shares | 13.98 | 33 | 33 | 0.0% |
-| GET /api/v1/shares/[token] | 13.98 | 21 | 21 | 0.0% |
+| POST /api/v1/auth/login *(on_start)* | 0.06 | 320 | 320 | 0.0% |
+| POST /api/v1/diagrams | 54.98 | 6 | 8 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 54.97 | 7 | 9 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 54.97 | 7 | 9 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 54.95 | 8 | 10 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 54.93 | 7 | 9 | 0.0% |
+| GET /api/v1/shares/[token] | 54.93 | 5 | 6 | 0.0% |
 
 ---
 
 #### 📊 Mức tải 50 Users (Tải trung bình)
-* **Tổng RPS:** 108.39 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 1400 ms | **p99 Tổng:** 1600 ms
+* **Tổng RPS:** 736.22 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 46 ms | **p99 Tổng:** 56 ms
 
 | Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
-| POST /api/v1/auth/login | 15.48 | 1600 | 1600 | 0.0% |
-| POST /api/v1/diagrams | 15.48 | 300 | 360 | 0.0% |
-| PUT /api/v1/diagrams/[id] | 15.48 | 200 | 280 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions | 15.48 | 200 | 220 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 15.48 | 210 | 240 | 0.0% |
-| POST /api/v1/diagrams/[id]/shares | 15.48 | 190 | 200 | 0.0% |
-| GET /api/v1/shares/[token] | 15.48 | 110 | 120 | 0.0% |
+| POST /api/v1/auth/login *(on_start)* | 0.28 | 490 | 500 | 0.0% |
+| POST /api/v1/diagrams | 122.78 | 46 | 56 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 122.72 | 47 | 57 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 122.70 | 40 | 50 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 122.64 | 46 | 58 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 122.58 | 46 | 58 | 0.0% |
+| GET /api/v1/shares/[token] | 122.53 | 44 | 53 | 0.0% |
 
 ---
 
 #### 📊 Mức tải 100 Users (Tải cao)
-* **Tổng RPS:** 122.47 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 2000 ms | **p99 Tổng:** 2900 ms
+* **Tổng RPS:** 747.49 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 110 ms | **p99 Tổng:** 130 ms
 
 | Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
-| POST /api/v1/auth/login | 17.50 | 3000 | 3000 | 0.0% |
-| POST /api/v1/diagrams | 17.50 | 560 | 850 | 0.0% |
-| PUT /api/v1/diagrams/[id] | 17.50 | 570 | 580 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions | 17.50 | 420 | 470 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 17.50 | 360 | 450 | 0.0% |
-| POST /api/v1/diagrams/[id]/shares | 17.50 | 390 | 460 | 0.0% |
-| GET /api/v1/shares/[token] | 17.50 | 260 | 350 | 0.0% |
+| POST /api/v1/auth/login *(on_start)* | 0.56 | 590 | 660 | 0.0% |
+| POST /api/v1/diagrams | 124.68 | 110 | 130 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 124.59 | 110 | 130 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 124.54 | 100 | 120 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 124.48 | 110 | 130 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 124.38 | 110 | 130 | 0.0% |
+| GET /api/v1/shares/[token] | 124.26 | 110 | 120 | 0.0% |
 
 ---
 
 ### 💡 Nhận xét & Đánh giá hiệu năng Baseline
-1. **Độ ổn định cao:** Hệ thống duy trì **Tỉ lệ lỗi 0.0%** trên tất cả các API ngay cả khi tải tăng lên mức 100 Virtual Users đồng thời.
-2. **Điểm nghẽn CPU (Bottleneck):** Endpoint `POST /api/v1/auth/login` có thời gian phản hồi cao nhất (p95 tăng từ 410ms → 1600ms → 3000ms) do tác vụ kiểm tra mật khẩu BCrypt tiêu tốn nhiều tài nguyên CPU.
-3. **Hiệu năng CRUD sơ đồ:** Các API xử lý sơ đồ, khôi phục phiên bản và chia sẻ liên kết giữ độ trễ mượt mà (chỉ từ 21ms – 570ms ở p95), đáp ứng tốt nhu cầu thao tác thời gian thực.
+1. **Thông lượng tối đa (Maximum Throughput):** Sau khi giải phóng được điểm nghẽn BCrypt login lặp lại, thông lượng hệ thống đạt mốc ngưỡng giới hạn **~747 - 750 RPS** trên cấu hình 4 vCPU của Kaggle.
+2. **Độ trễ:** 
+   * Ở mức 10 users: Độ trễ phản hồi cực kỳ mượt mà, p95 chỉ từ **5ms – 8ms**.
+   * Ở mức 50 users: Độ trễ giữ ổn định ở mốc **40ms – 47ms**.
+   * Khi tải tăng gấp đôi lên 100 users: Tổng RPS bắt đầu chạm trần bão hòa (~747 req/s), độ trễ p95 tăng nhẹ lên **100ms – 110ms** nhưng hệ thống vẫn phản hồi cực nhanh dưới 0.15s.
+3. **Độ tin cậy:** Tỉ lệ lỗi ghi nhận **0.0%** tuyệt đối trên toàn bộ 3 mức tải, khẳng định tính toàn vẹn dữ liệu và khả năng quản lý connection pool của Spring Boot + PostgreSQL vận hành rất chuẩn xác.
 
 ## 7. Hướng cải tiến cho pha 2
 
