@@ -165,33 +165,81 @@ Một số việc thường làm khác:
 - Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`. Khóa được sắp xếp cố định và server là URL tương đối, nên file chỉ thay đổi khi API thay đổi; diff khác rỗng nghĩa là phải commit lại file này.
 - Thay đổi CSDL: thêm file migration mới dạng `V<số>__mo_ta.sql` (hai dấu gạch dưới) trong `src/main/resources/db/migration`, không sửa các file đã có.
 
-## 6. Kiểm thử tải trên Kaggle
+## 6. Kiểm thử tải trên Kaggle\
 
-Kaggle không hỗ trợ Docker nên app được chạy trực tiếp bằng `java -jar` trong notebook. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và cùng kịch bản để so sánh.
+Link notebook: https://www.kaggle.com/code/minhwayne/diagramio
+
+Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 15 và công cụ Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Việc kiểm thử trên `localhost` giúp loại bỏ hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
 
 | Thông số | Giá trị |
 |---|---|
 | Máy | Kaggle Notebook CPU: 4 vCPU, 16 GB RAM |
-| Phần mềm | Java 21, PostgreSQL 15, công cụ tải Locust (headless) |
-| Dữ liệu ban đầu | Khởi tạo CSDL trống, tự động tạo 50 tài khoản người dùng động trong quá trình chạy |
-| Kịch bản | Kịch bản tuần tự 8 bước (Đăng ký → Đăng nhập → Tạo sơ đồ → Sửa sơ đồ → Lưu Snapshot → Rollback → Tạo Share → Truy cập Public Share), 50 người dùng ảo (Virtual Users), thời gian chạy 30s |
+| Phần mềm | Java 21, PostgreSQL 15, Locust (Python 3.13) |
+| Dữ liệu ban đầu | Pre-seed sẵn 100 tài khoản cố định vào CSDL trước khi đo |
+| Kịch bản | **Mỗi Virtual User đăng nhập 1 lần duy nhất lúc khởi tạo (`on_start`), sau đó chạy lặp liên tục chuỗi 5 bước nghiệp vụ (Tạo sơ đồ → Sửa & Snapshot → Khôi phục → Tạo link chia sẻ → Truy cập link chia sẻ) cho đến hết thời gian đo.** |
 
-**Cách vận hành:**
-1. **Tại Server local:** Khởi chạy Backend & Database bằng `docker compose up -d`, sau đó tạo tunnel mã hóa bằng lệnh `npx cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080`. Copy Cloudflare Tunnel (`https://<subdomain>.trycloudflare.com`).
-2. **Tại Kaggle Notebook (bật Internet):** Cài đặt Locust (`pip install locust`), nạp kịch bản `locustfile.py` và chạy lệnh ép tải trỏ `--host` về địa chỉ Cloudflare Tunnel (`https://<subdomain>.trycloudflare.com`).
+### Cách chạy trên Kaggle Notebook:
+1. Cài đặt JDK 21, PostgreSQL 15 và Locust (`pip install locust`).
+2. Chuyển cơ chế xác thực PostgreSQL sang `trust` cho `localhost` và tạo database `diagramio`.
+3. Clone repository, build ứng dụng bằng `./mvnw clean package -DskipTests` và chạy `java -jar app.jar &` (Flyway tự động tạo bảng).
+4. Khởi tạo dữ liệu mẫu (Pre-seed 100 users) và thực thi script Locust đo tải ở các mức 10, 50, 100 users.
 
-Link notebook: https://www.kaggle.com/code/hoanggiabao1/diagramio
+---
 
-| Kịch bản | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
+### Kết quả kiểm thử chi tiết theo từng mức tải
+
+#### 📊 Mức tải 10 Users (Tải nhẹ)
+* **Tổng RPS:** 329.78 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 7 ms | **p99 Tổng:** 9 ms
+
+| Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
 |---|---|---|---|---|
-| POST /api/v1/auth/register | 12.63 | 1000 | 1100 | 0.0% |
-| POST /api/v1/auth/login | 12.63 | 890 | 900 | 0.0% |
-| POST /api/v1/diagrams | 12.63 | 470 | 870 | 0.0% |
-| PUT /api/v1/diagrams/[id] | 12.63 | 420 | 820 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions | 12.63 | 400 | 790 | 0.0% |
-| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 12.63 | 430 | 780 | 0.0% |
-| POST /api/v1/diagrams/[id]/shares | 12.63 | 350 | 790 | 0.0% |
-| GET /api/v1/shares/[token] | 12.63 | 420 | 520 | 0.0% |
+| POST /api/v1/auth/login *(on_start)* | 0.06 | 320 | 320 | 0.0% |
+| POST /api/v1/diagrams | 54.98 | 6 | 8 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 54.97 | 7 | 9 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 54.97 | 7 | 9 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 54.95 | 8 | 10 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 54.93 | 7 | 9 | 0.0% |
+| GET /api/v1/shares/[token] | 54.93 | 5 | 6 | 0.0% |
+
+---
+
+#### 📊 Mức tải 50 Users (Tải trung bình)
+* **Tổng RPS:** 736.22 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 46 ms | **p99 Tổng:** 56 ms
+
+| Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
+|---|---|---|---|---|
+| POST /api/v1/auth/login *(on_start)* | 0.28 | 490 | 500 | 0.0% |
+| POST /api/v1/diagrams | 122.78 | 46 | 56 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 122.72 | 47 | 57 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 122.70 | 40 | 50 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 122.64 | 46 | 58 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 122.58 | 46 | 58 | 0.0% |
+| GET /api/v1/shares/[token] | 122.53 | 44 | 53 | 0.0% |
+
+---
+
+#### 📊 Mức tải 100 Users (Tải cao)
+* **Tổng RPS:** 747.49 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 110 ms | **p99 Tổng:** 130 ms
+
+| Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
+|---|---|---|---|---|
+| POST /api/v1/auth/login *(on_start)* | 0.56 | 590 | 660 | 0.0% |
+| POST /api/v1/diagrams | 124.68 | 110 | 130 | 0.0% |
+| PUT /api/v1/diagrams/[id] | 124.59 | 110 | 130 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions | 124.54 | 100 | 120 | 0.0% |
+| POST /api/v1/diagrams/[id]/versions/[version_id]/restore | 124.48 | 110 | 130 | 0.0% |
+| POST /api/v1/diagrams/[id]/shares | 124.38 | 110 | 130 | 0.0% |
+| GET /api/v1/shares/[token] | 124.26 | 110 | 120 | 0.0% |
+
+---
+
+### 💡 Nhận xét & Đánh giá hiệu năng Baseline
+1. **Thông lượng tối đa (Maximum Throughput):** Sau khi giải phóng được điểm nghẽn BCrypt login lặp lại, thông lượng hệ thống đạt mốc ngưỡng giới hạn ~747 - 750 RPS trên cấu hình 4 vCPU của Kaggle.
+2. **Độ trễ:** 
+   * Ở mức 10 users: Độ trễ phản hồi thấp, p95 chỉ từ 5ms – 8ms.
+   * Ở mức 50 users: Độ trễ giữ ổn định ở mốc 40ms – 47ms.
+   * Ở mức 100 users: Tổng RPS bắt đầu chạm trần bão hòa (~747 req/s), độ trễ p95 tăng lên 100ms – 110ms nhưng hệ thống vẫn phản hồi dưới 0.15s.
+3. **Độ tin cậy:** Tỉ lệ lỗi ghi nhận 0.0% trên toàn bộ 3 mức tải, khẳng định tính toàn vẹn dữ liệu và khả năng quản lý connection pool của Spring Boot + PostgreSQL vận hành rất chính xác.
 
 ## 7. Hướng cải tiến cho pha 2
 
