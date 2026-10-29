@@ -165,30 +165,31 @@ Một số việc thường làm khác:
 - Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`. Khóa được sắp xếp cố định và server là URL tương đối, nên file chỉ thay đổi khi API thay đổi; diff khác rỗng nghĩa là phải commit lại file này.
 - Thay đổi CSDL: thêm file migration mới dạng `V<số>__mo_ta.sql` (hai dấu gạch dưới) trong `src/main/resources/db/migration`, không sửa các file đã có.
 
-## 6. Kiểm thử tải trên Kaggle\
+## 6. Kiểm thử tải trên Kaggle
 
 Link notebook: https://www.kaggle.com/code/minhwayne/diagramio
 
-Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 15 và công cụ Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Việc kiểm thử trên `localhost` giúp loại bỏ hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
+Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQL 16 và công cụ Locust (headless) được khởi chạy trực tiếp trên cùng một Kaggle Notebook (`localhost:8080`). Việc kiểm thử trên `localhost` giúp loại bỏ hoàn toàn độ trễ đường truyền Internet và đo lường chính xác hiệu năng thực tế của Backend. Kết quả dưới đây là mốc baseline; pha 2 cần chạy lại cùng cấu hình và kịch bản để so sánh.
 
 | Thông số | Giá trị |
 |---|---|
-| Máy | Kaggle Notebook CPU: 4 vCPU, 16 GB RAM |
-| Phần mềm | Java 21, PostgreSQL 15, Locust (Python 3.13) |
+| Máy | Kaggle Notebook CPU: 4 vCPU, 31 GB RAM |
+| Phần mềm | Java 21, PostgreSQL 16, Locust (Python 3.13) |
+| Mã nguồn được đo | commit `ca41f27` (trước khi merge PR #14) |
 | Dữ liệu ban đầu | Pre-seed sẵn 100 tài khoản cố định vào CSDL trước khi đo |
-| Kịch bản | **Mỗi Virtual User đăng nhập 1 lần duy nhất lúc khởi tạo (`on_start`), sau đó chạy lặp liên tục chuỗi 5 bước nghiệp vụ (Tạo sơ đồ → Sửa & Snapshot → Khôi phục → Tạo link chia sẻ → Truy cập link chia sẻ) cho đến hết thời gian đo.** |
+| Kịch bản | Mỗi Virtual User đăng nhập 1 lần duy nhất lúc khởi tạo (`on_start`), sau đó chạy lặp liên tục chuỗi 5 bước nghiệp vụ (Tạo sơ đồ → Sửa & Snapshot → Khôi phục → Tạo link chia sẻ → Truy cập link chia sẻ) cho đến hết thời gian đo. |
 
 ### Cách chạy trên Kaggle Notebook:
-1. Cài đặt JDK 21, PostgreSQL 15 và Locust (`pip install locust`).
+1. Cài đặt JDK 21, PostgreSQL 16 và Locust (`pip install locust`).
 2. Chuyển cơ chế xác thực PostgreSQL sang `trust` cho `localhost` và tạo database `diagramio`.
-3. Clone repository, build ứng dụng bằng `./mvnw clean package -DskipTests` và chạy `java -jar app.jar &` (Flyway tự động tạo bảng).
+3. Clone repository, build ứng dụng bằng `./mvnw clean package -DskipTests` và chạy `java -jar target/diagramio-0.0.1-SNAPSHOT.jar &` (Flyway tự động tạo bảng).
 4. Khởi tạo dữ liệu mẫu (Pre-seed 100 users) và thực thi script Locust đo tải ở các mức 10, 50, 100 users.
 
 ---
 
 ### Kết quả kiểm thử chi tiết theo từng mức tải
 
-#### 📊 Mức tải 10 Users (Tải nhẹ)
+#### Mức tải 10 Users (Tải nhẹ)
 * **Tổng RPS:** 329.78 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 7 ms | **p99 Tổng:** 9 ms
 
 | Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
@@ -203,7 +204,7 @@ Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQ
 
 ---
 
-#### 📊 Mức tải 50 Users (Tải trung bình)
+#### Mức tải 50 Users (Tải trung bình)
 * **Tổng RPS:** 736.22 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 46 ms | **p99 Tổng:** 56 ms
 
 | Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
@@ -218,7 +219,7 @@ Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQ
 
 ---
 
-#### 📊 Mức tải 100 Users (Tải cao)
+#### Mức tải 100 Users (Tải cao)
 * **Tổng RPS:** 747.49 requests/s | **Tổng Tỉ lệ lỗi:** 0.0% | **p95 Tổng:** 110 ms | **p99 Tổng:** 130 ms
 
 | Phương thức & Endpoint | RPS | p95 (ms) | p99 (ms) | Tỉ lệ lỗi |
@@ -233,7 +234,7 @@ Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQ
 
 ---
 
-### 💡 Nhận xét & Đánh giá hiệu năng Baseline
+### Nhận xét & Đánh giá hiệu năng Baseline
 1. **Thông lượng tối đa (Maximum Throughput):** Sau khi giải phóng được điểm nghẽn BCrypt login lặp lại, thông lượng hệ thống đạt mốc ngưỡng giới hạn ~747 - 750 RPS trên cấu hình 4 vCPU của Kaggle.
 2. **Độ trễ:** 
    * Ở mức 10 users: Độ trễ phản hồi thấp, p95 chỉ từ 5ms – 8ms.
