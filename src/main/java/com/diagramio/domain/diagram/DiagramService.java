@@ -5,10 +5,6 @@ import com.diagramio.domain.access.DiagramAccess;
 import com.diagramio.domain.access.Permission;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -16,10 +12,7 @@ import java.util.UUID;
 /** Domain rules for diagram management. This class intentionally has no framework dependency. */
 public class DiagramService {
 
-    public static final String DEFAULT_DATA = "{\"nodes\": [], \"edges\": []}";
     public static final int MAX_PAGE_SIZE = 100;
-    private static final int MAX_DATA_BYTES = 2 * 1024 * 1024;
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final DiagramRepository repository;
     private final DiagramAccess access;
@@ -34,14 +27,11 @@ public class DiagramService {
             throw new InvalidInputException("Diagram is required");
         }
         requireType(diagram.getDiagramType());
-        String data = diagram.getData();
-        if (data == null || data.isBlank()) {
-            data = DEFAULT_DATA;
+        if (diagram.getData() == null) {
+            diagram.setData(DiagramData.EMPTY);
         }
-        validateJson(data);
 
         Instant now = Instant.now();
-        diagram.setData(data);
         diagram.setVersion(1);
         diagram.setPublic(false);
         diagram.setCreatedAt(now);
@@ -54,7 +44,7 @@ public class DiagramService {
      * người sửa qua link gửi isPublic khác thì giữ nguyên giá trị cũ.
      * updatedBy là người đăng nhập, NULL nếu sửa qua link mà không đăng nhập.
      */
-    public Diagram updateDiagram(UUID id, String title, DiagramType diagramType, String data,
+    public Diagram updateDiagram(UUID id, String title, DiagramType diagramType, DiagramData data,
                                  boolean isPublic, Caller caller, Integer requestVersion) {
         if (id == null) {
             throw new InvalidInputException("Diagram id is required");
@@ -62,7 +52,9 @@ public class DiagramService {
         Diagram current = access.require(id, caller, Permission.EDIT);
         checkVersion(id, requestVersion, current.getVersion());
         requireType(diagramType);
-        validateJson(data);
+        if (data == null) {
+            throw new InvalidInputException("data must be valid JSON");
+        }
 
         current.setTitle(title);
         current.setDiagramType(diagramType);
@@ -126,22 +118,4 @@ public class DiagramService {
         return value == null || value.isBlank() ? "" : value.trim();
     }
 
-    /** data phải là object JSON có mảng "nodes" và "edges", tối đa 2 MB. */
-    private void validateJson(String data) {
-        if (data == null || data.isBlank()) {
-            throw new InvalidInputException("data must be valid JSON");
-        }
-        if (data.getBytes(StandardCharsets.UTF_8).length > MAX_DATA_BYTES) {
-            throw new InvalidInputException("data must not exceed 2 MB");
-        }
-        JsonNode root;
-        try {
-            root = OBJECT_MAPPER.readTree(data);
-        } catch (JsonProcessingException e) {
-            throw new InvalidInputException("data must be valid JSON");
-        }
-        if (root == null || !root.isObject() || !root.path("nodes").isArray() || !root.path("edges").isArray()) {
-            throw new InvalidInputException("data must be a JSON object with \"nodes\" and \"edges\" arrays");
-        }
-    }
 }

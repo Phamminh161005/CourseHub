@@ -10,6 +10,7 @@ import com.diagramio.api.dto.PageResponse;
 import com.diagramio.config.OpenApiConfig;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramService;
 import com.diagramio.domain.diagram.DiagramType;
 import io.swagger.v3.oas.annotations.Operation;
@@ -127,7 +128,8 @@ public class DiagramController {
             @Valid @RequestBody UpdateDiagramRequest request,
             Caller caller) {
         return DiagramResponse.from(diagramService.updateDiagram(
-                id, request.title(), DiagramType.from(request.diagramType()), request.data().toString(),
+                id, request.title(), DiagramType.from(request.diagramType()),
+                DiagramData.of(request.data().toString()),
                 request.isPublic(),
                 caller, request.version()));
     }

@@ -42,7 +42,7 @@ public record SharedDiagramResponse(
                 view.getDiagramId(),
                 view.getTitle(),
                 view.getDiagramType().name(),
-                view.getData(),
+                view.getData().json(),
                 view.getRole().value(),
                 view.getVersion(),
                 view.isPublic(),

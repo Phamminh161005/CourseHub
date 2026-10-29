@@ -14,7 +14,7 @@ public record DiagramVersionResponse(UUID id, UUID diagramId, int versionNumber,
                                      UUID createdBy, Instant createdAt) {
 
     public static DiagramVersionResponse from(DiagramVersion v) {
-        return new DiagramVersionResponse(v.id(), v.diagramId(), v.versionNumber(), v.note(), v.data(),
+        return new DiagramVersionResponse(v.id(), v.diagramId(), v.versionNumber(), v.note(), v.data().json(),
                 v.createdBy(), v.createdAt());
     }
 }

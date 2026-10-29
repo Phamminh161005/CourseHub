@@ -1,5 +1,6 @@
 package com.diagramio.infrastructure.version;
 
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.version.DiagramVersion;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -47,7 +48,7 @@ public class DiagramVersionEntity {
         entity.id = version.id();
         entity.diagramId = version.diagramId();
         entity.versionNumber = version.versionNumber();
-        entity.data = version.data();
+        entity.data = version.data().json();
         entity.note = version.note();
         entity.createdBy = version.createdBy();
         entity.createdAt = version.createdAt();
@@ -55,6 +56,7 @@ public class DiagramVersionEntity {
     }
 
     DiagramVersion toDomain() {
-        return new DiagramVersion(id, diagramId, versionNumber, data, note, createdBy, createdAt);
+        return new DiagramVersion(id, diagramId, versionNumber, DiagramData.fromStorage(data), note, createdBy,
+                createdAt);
     }
 }

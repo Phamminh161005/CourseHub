@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
@@ -46,7 +47,7 @@ class JpaRepositoriesIntegrationTest {
 
     /** Người dùng mẫu được seed trong V2. */
     private static final UUID SEED_USER = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    private static final String DATA = "{\"nodes\": [{\"id\": \"n1\"}], \"edges\": []}";
+    private static final DiagramData DATA = DiagramData.fromStorage("{\"nodes\": [{\"id\": \"n1\"}], \"edges\": []}");
 
     @Autowired
     private DiagramRepositoryAdapter diagramRepository;
@@ -69,7 +70,7 @@ class JpaRepositoriesIntegrationTest {
         assertThat(versionRepository.maxVersionNumber(diagram.getId())).isEqualTo(2);
         assertThat(versionRepository.findByIdAndDiagramId(second.id(), diagram.getId()))
                 .get().satisfies(v -> {
-                    assertThat(v.data()).contains("\"n1\"");
+                    assertThat(v.data().json()).contains("\"n1\"");
                     assertThat(v.createdBy()).isEqualTo(SEED_USER);
                 });
     }
@@ -99,14 +100,14 @@ class JpaRepositoriesIntegrationTest {
     @Test
     void updateWithExpectedVersionSucceeds() {
         Diagram diagram = newDiagram();
-        diagram.setData("{\"nodes\": [], \"edges\": [{\"id\": \"e1\"}]}");
+        diagram.setData(DiagramData.fromStorage("{\"nodes\": [], \"edges\": [{\"id\": \"e1\"}]}"));
 
         Diagram saved = diagramRepository.save(diagram);
 
         assertThat(saved.getVersion()).isEqualTo(2);
         Diagram stored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(stored.getVersion()).isEqualTo(2);
-        assertThat(stored.getData()).contains("\"e1\"");
+        assertThat(stored.getData().json()).contains("\"e1\"");
     }
 
     @Test
@@ -117,14 +118,14 @@ class JpaRepositoriesIntegrationTest {
         other.setTitle("Renamed by someone else");
         diagramRepository.save(other);
 
-        diagram.setData("{\"nodes\": [], \"edges\": []}"); // vẫn giữ version 1 đã đọc
+        diagram.setData(DiagramData.fromStorage("{\"nodes\": [], \"edges\": []}")); // vẫn giữ version 1 đã đọc
 
         assertThatThrownBy(() -> diagramRepository.save(diagram))
                 .isInstanceOf(OptimisticLockConflictException.class)
                 .hasMessage("Diagram version conflict: requested 1, current 2");
         Diagram stored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(stored.getVersion()).isEqualTo(2);
-        assertThat(stored.getData()).contains("\"n1\"");
+        assertThat(stored.getData().json()).contains("\"n1\"");
     }
 
     @Test

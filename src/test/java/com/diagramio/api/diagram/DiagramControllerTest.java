@@ -18,6 +18,7 @@ import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramService;
 import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.DiagramNotFoundException;
@@ -84,7 +85,7 @@ class DiagramControllerTest {
     @Test
     void updateReturns200ForValidRequest() throws Exception {
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq(DiagramType.ERD),
-                eq(SENT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
+                eq(DiagramData.fromStorage(SENT_DATA)), eq(false), eq(Caller.user(USER_ID)), eq(1)))
                 .thenReturn(diagram());
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -101,7 +102,7 @@ class DiagramControllerTest {
     @Test
     void updateReturns409ForVersionConflict() throws Exception {
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq(DiagramType.ERD),
-                eq(SENT_DATA), eq(false), eq(Caller.user(USER_ID)), eq(1)))
+                eq(DiagramData.fromStorage(SENT_DATA)), eq(false), eq(Caller.user(USER_ID)), eq(1)))
                 .thenThrow(new OptimisticLockConflictException(DIAGRAM_ID, 1, 2));
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -140,7 +141,7 @@ class DiagramControllerTest {
         Caller editor = Caller.shareToken(DIAGRAM_ID, ShareRole.EDIT);
         when(shareService.resolveShareToken("edit-token")).thenReturn(Optional.of(editor));
         when(diagramService.updateDiagram(eq(DIAGRAM_ID), eq("Orders"), eq(DiagramType.ERD),
-                eq(SENT_DATA), eq(false), eq(editor), eq(1)))
+                eq(DiagramData.fromStorage(SENT_DATA)), eq(false), eq(editor), eq(1)))
                 .thenReturn(diagram());
 
         mockMvc.perform(put("/api/v1/diagrams/{id}", DIAGRAM_ID)
@@ -188,7 +189,7 @@ class DiagramControllerTest {
     }
 
     private Diagram diagram() {
-        return new Diagram(DIAGRAM_ID, "Orders", DiagramType.ERD, DiagramService.DEFAULT_DATA, 1,
+        return new Diagram(DIAGRAM_ID, "Orders", DiagramType.ERD, DiagramData.EMPTY, 1,
                 false, USER_ID, USER_ID, null, null);
     }
 }

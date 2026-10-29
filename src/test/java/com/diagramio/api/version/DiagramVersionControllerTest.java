@@ -19,6 +19,7 @@ import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.ConflictException;
 import com.diagramio.domain.exception.ForbiddenException;
@@ -45,7 +46,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(SecurityConfig.class)
 class DiagramVersionControllerTest {
 
-    private static final String DATA = "{\"nodes\":[{\"id\":\"n1\"}],\"edges\":[]}";
+    private static final DiagramData DATA = DiagramData.fromStorage("{\"nodes\":[{\"id\":\"n1\"}],\"edges\":[]}");
     private static final Instant NOW = Instant.parse("2026-10-24T10:00:00Z");
 
     @Autowired

@@ -22,7 +22,7 @@ public record DiagramResponse(
 
     public static DiagramResponse from(Diagram diagram) {
         return new DiagramResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType().name(),
-                diagram.getData(), diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(),
+                diagram.getData().json(), diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(),
                 diagram.getUpdatedBy(), diagram.getCreatedAt(), diagram.getUpdatedAt());
     }
 }

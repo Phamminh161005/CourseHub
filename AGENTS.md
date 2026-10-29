@@ -61,6 +61,7 @@
 - Generate cryptographically secure, unique sharing tokens and invalidate them immediately when revoked.
 - Do not expose private diagram data, credentials, refresh tokens, or internal implementation details in public responses.
 - Validate and constrain request bodies, including the maximum 2 MB diagram JSON payload, before persistence.
+- Diagram JSON is a `DiagramData` value object: build it with `DiagramData.of(json)` from user input (validates the `nodes`/`edges` shape and 2 MB) and with `DiagramData.fromStorage(json)` only for data read back from the database. Do not pass raw JSON strings through the domain.
 
 ## Data Integrity and Concurrency
 

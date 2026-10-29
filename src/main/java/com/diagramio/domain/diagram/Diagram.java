@@ -9,7 +9,7 @@ public class Diagram {
     private UUID id;
     private String title;
     private DiagramType diagramType;
-    private String data;
+    private DiagramData data;
     private Integer version;
     private boolean isPublic;
     private UUID ownerId;
@@ -20,7 +20,7 @@ public class Diagram {
     public Diagram() {
     }
 
-    public Diagram(UUID id, String title, DiagramType diagramType, String data, Integer version,
+    public Diagram(UUID id, String title, DiagramType diagramType, DiagramData data, Integer version,
                    boolean isPublic, UUID ownerId, UUID updatedBy, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.title = title;
@@ -44,8 +44,8 @@ public class Diagram {
     public void setTitle(String title) { this.title = title; }
     public DiagramType getDiagramType() { return diagramType; }
     public void setDiagramType(DiagramType diagramType) { this.diagramType = diagramType; }
-    public String getData() { return data; }
-    public void setData(String data) { this.data = data; }
+    public DiagramData getData() { return data; }
+    public void setData(DiagramData data) { this.data = data; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public boolean isPublic() { return isPublic; }

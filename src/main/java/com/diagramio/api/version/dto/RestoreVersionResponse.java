@@ -20,7 +20,7 @@ public record RestoreVersionResponse(UUID diagramId, String title, String diagra
 
     public static RestoreVersionResponse from(RestoreResult result) {
         Diagram d = result.diagram();
-        return new RestoreVersionResponse(d.getId(), d.getTitle(), d.getDiagramType().name(), d.getData(), d.getVersion(),
-                d.getUpdatedAt(), DiagramVersionSummaryResponse.from(result.backup()));
+        return new RestoreVersionResponse(d.getId(), d.getTitle(), d.getDiagramType().name(), d.getData().json(),
+                d.getVersion(), d.getUpdatedAt(), DiagramVersionSummaryResponse.from(result.backup()));
     }
 }
