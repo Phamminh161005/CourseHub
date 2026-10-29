@@ -38,6 +38,31 @@ public class Diagram {
         return ownerId != null && ownerId.equals(userId);
     }
 
+    /**
+     * Đổi metadata (tên, loại). Tách khỏi nội dung vì hai phần thay đổi theo cách khác nhau:
+     * metadata ít đổi, nội dung đổi liên tục (pha 2: sửa theo từng thao tác, cộng tác thời gian thực).
+     */
+    public void updateMetadata(String title, DiagramType diagramType, UUID changedBy, Instant changedAt) {
+        this.title = title;
+        this.diagramType = diagramType;
+        touch(changedBy, changedAt);
+    }
+
+    /**
+     * Thay toàn bộ nội dung (nodes, edges). Mọi thay đổi nội dung (cập nhật sơ đồ, khôi phục phiên bản)
+     * đi qua đúng phương thức này, để pha 2 thêm sửa theo thao tác, sự kiện hay cache ở một chỗ.
+     */
+    public void replaceContent(DiagramData newData, UUID changedBy, Instant changedAt) {
+        this.data = newData;
+        touch(changedBy, changedAt);
+    }
+
+    /** changedBy là người đăng nhập, null nếu sửa qua link mà không đăng nhập. */
+    private void touch(UUID changedBy, Instant changedAt) {
+        this.updatedBy = changedBy;
+        this.updatedAt = changedAt;
+    }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public String getTitle() { return title; }

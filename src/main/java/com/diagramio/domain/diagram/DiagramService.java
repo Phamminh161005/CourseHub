@@ -56,14 +56,13 @@ public class DiagramService {
             throw new InvalidInputException("data must be valid JSON");
         }
 
-        current.setTitle(title);
-        current.setDiagramType(diagramType);
-        current.setData(data);
-        if (caller.canManage(current)) {
+        Instant now = Instant.now();
+        current.updateMetadata(title, diagramType, caller.userId(), now);
+        current.replaceContent(data, caller.userId(), now);
+        // Chỉ owner đổi được trạng thái công khai; người sửa qua link gửi giá trị khác thì bỏ qua
+        if (Permission.MANAGE.isGrantedTo(caller, current)) {
             current.setPublic(isPublic);
         }
-        current.setUpdatedBy(caller.userId());
-        current.setUpdatedAt(Instant.now());
         return repository.save(current);
     }
 

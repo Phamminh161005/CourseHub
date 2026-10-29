@@ -61,7 +61,9 @@ Một số điểm thiết kế chính:
 
 - Xác thực nằm trong hai filter thay vì lặp lại ở từng endpoint. Filter JWT đọc `Authorization: Bearer <token>`, filter thứ hai đọc `X-Share-Token` của link chia sẻ. Hai filter không tự chặn request; việc trả 401 do `SecurityConfig` quyết định.
 - Thông tin người gọi được gom vào `Caller` (người dùng đăng nhập và/hoặc link chia sẻ). Mọi luật quyền nằm trong `Caller` với bốn hàm `canView`, `canViewHistory`, `canEdit`, `canManage`, nên service không cần biết người gọi đến bằng cách nào. Controller không tự đọc thông tin xác thực mà nhận sẵn tham số `Caller` (khách nếu không đăng nhập, không có link) hoặc `@CurrentUser UUID` (endpoint cần tài khoản, thiếu thì 401).
-- Transaction được truyền vào domain qua interface `TransactionRunner`; tầng infrastructure cài đặt bằng `TransactionTemplate`. Nhờ vậy service vẫn là Java thuần mà vẫn bọc được nhiều bước trong một transaction (làm mới token, lưu và khôi phục phiên bản).
+- Transaction được truyền vào domain qua interface `TransactionRunner`; tầng infrastructure cài đặt bằng `TransactionTemplate`. Nhờ vậy service vẫn là Java thuần mà vẫn bọc được nhiều bước trong một transaction (làm mới token, lưu và khôi phục phiên bản). Khi nào cần transaction được ghi thành quy tắc trong `AGENTS.md`.
+- Quyền trên sơ đồ được kiểm tra ở một chỗ: `DiagramAccess.require(id, caller, Permission)` trả 404, 401 hoặc 403 thống nhất cho mọi module.
+- Dữ liệu sơ đồ là kiểu `DiagramData` (kiểm tra cấu trúc và 2 MB khi tạo từ request), loại sơ đồ là enum `DiagramType`. `Diagram` tách metadata (`updateMetadata`) khỏi nội dung (`replaceContent`); mọi thay đổi nội dung, kể cả khôi phục phiên bản, đi qua `replaceContent`. Đây là chỗ nối cho pha 2 (sửa theo thao tác, sự kiện, cache).
 - Chống ghi đè khi nhiều người cùng sửa bằng optimistic locking (`@Version`). Lưu và khôi phục phiên bản khóa dòng sơ đồ (`SELECT ... FOR UPDATE`) để các yêu cầu đồng thời xếp hàng.
 - Schema CSDL do Flyway quản lý, Hibernate chỉ kiểm tra schema khớp với entity (`ddl-auto: validate`). CSDL gồm năm bảng: `users`, `refresh_tokens`, `diagrams`, `diagram_versions`, `diagram_shares`.
 

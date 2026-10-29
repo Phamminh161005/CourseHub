@@ -83,9 +83,7 @@ public class DiagramVersionService {
             DiagramVersion backup = snapshot(diagram,
                     "Auto backup before restoring version " + target.versionNumber(), caller);
 
-            diagram.setData(target.data());
-            diagram.setUpdatedBy(caller.userId());
-            diagram.setUpdatedAt(Instant.now(clock));
+            diagram.replaceContent(target.data(), caller.userId(), Instant.now(clock));
             Diagram restored = diagramRepository.save(diagram);
             return new RestoreResult(restored, backup);
         });
