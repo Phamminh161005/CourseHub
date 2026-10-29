@@ -1,11 +1,11 @@
 package com.diagramio.api.version;
 
-import com.diagramio.api.CallerResolver;
 import com.diagramio.api.dto.ErrorResponse;
 import com.diagramio.api.version.dto.CreateVersionRequest;
 import com.diagramio.api.version.dto.DiagramVersionResponse;
 import com.diagramio.api.version.dto.DiagramVersionSummaryResponse;
 import com.diagramio.api.version.dto.RestoreVersionResponse;
+import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,7 +18,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,8 +47,8 @@ public class DiagramVersionController {
     @Operation(summary = "Danh sách phiên bản đã lưu (mới nhất trước)",
             description = "Owner hoặc người có link chia sẻ view/edit.")
     @ApiResponse(responseCode = "200", description = "Danh sách phiên bản")
-    public List<DiagramVersionSummaryResponse> list(@PathVariable("id") UUID diagramId, Authentication authentication) {
-        return versionService.listVersions(diagramId, CallerResolver.resolve(authentication)).stream()
+    public List<DiagramVersionSummaryResponse> list(@PathVariable("id") UUID diagramId, Caller caller) {
+        return versionService.listVersions(diagramId, caller).stream()
                 .map(DiagramVersionSummaryResponse::from)
                 .toList();
     }
@@ -65,11 +64,11 @@ public class DiagramVersionController {
     public ResponseEntity<DiagramVersionResponse> create(@PathVariable("id") UUID diagramId,
                                                          @Valid @RequestBody(required = false)
                                                          CreateVersionRequest request,
-                                                         Authentication authentication) {
+                                                         Caller caller) {
         String note = request == null ? null : request.note();
         Integer expectedVersion = request == null ? null : request.version();
         DiagramVersion version = versionService.createVersion(diagramId, note, expectedVersion,
-                CallerResolver.resolve(authentication));
+                caller);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{versionId}")
                 .buildAndExpand(version.id())
@@ -82,9 +81,9 @@ public class DiagramVersionController {
             description = "Owner hoặc người có link chia sẻ view/edit.")
     @ApiResponse(responseCode = "200", description = "Chi tiết phiên bản")
     public DiagramVersionResponse get(@PathVariable("id") UUID diagramId, @PathVariable("version_id") UUID versionId,
-                                      Authentication authentication) {
+                                      Caller caller) {
         return DiagramVersionResponse.from(
-                versionService.getVersion(diagramId, versionId, CallerResolver.resolve(authentication)));
+                versionService.getVersion(diagramId, versionId, caller));
     }
 
     @PostMapping("/{version_id}/restore")
@@ -95,8 +94,8 @@ public class DiagramVersionController {
     @ApiResponse(responseCode = "409", description = "Sơ đồ vừa bị người khác cập nhật, thử lại",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public RestoreVersionResponse restore(@PathVariable("id") UUID diagramId, @PathVariable("version_id") UUID versionId,
-                                          Authentication authentication) {
+                                          Caller caller) {
         return RestoreVersionResponse.from(
-                versionService.restore(diagramId, versionId, CallerResolver.resolve(authentication)));
+                versionService.restore(diagramId, versionId, caller));
     }
 }

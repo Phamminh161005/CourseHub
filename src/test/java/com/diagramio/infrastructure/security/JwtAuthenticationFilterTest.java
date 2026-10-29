@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.user.User;
 import jakarta.servlet.FilterChain;
 import java.time.Clock;
@@ -39,7 +40,7 @@ class JwtAuthenticationFilterTest {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assertThat(auth).isNotNull();
-        assertThat(auth.getPrincipal()).isEqualTo(USER.id());
+        assertThat(auth.getPrincipal()).isEqualTo(Caller.user(USER.id()));
         assertThat(auth.isAuthenticated()).isTrue();
         verify(chain).doFilter(any(), any());
     }

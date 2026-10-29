@@ -4,7 +4,6 @@ import com.diagramio.api.GlobalExceptionHandler;
 import com.diagramio.config.SecurityConfig;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
-import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.share.DiagramShare;
 import com.diagramio.domain.share.SharedDiagramView;
 import com.diagramio.domain.share.ShareService;
@@ -100,15 +99,15 @@ class DiagramShareControllerTest {
     }
 
     @Test
-    @DisplayName("Chỉ cầm token chia sẻ: service nhận Caller của link và từ chối (403)")
-    void getShares_ShareTokenOnly_ReturnsForbidden() throws Exception {
+    @DisplayName("Chỉ cầm token chia sẻ: quản lý link cần tài khoản nên 401, service không được gọi")
+    void getShares_ShareTokenOnly_ReturnsUnauthorized() throws Exception {
         Caller editor = Caller.shareToken(diagramId, ShareRole.EDIT);
         when(shareService.resolveShareToken("edit_token")).thenReturn(Optional.of(editor));
-        when(shareService.getShares(diagramId, editor)).thenThrow(new ForbiddenException("owner only"));
 
         mockMvc.perform(get("/api/v1/diagrams/" + diagramId + "/shares")
                         .header("X-Share-Token", "edit_token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
+        verify(shareService, never()).getShares(any(), any());
     }
 
     @Test

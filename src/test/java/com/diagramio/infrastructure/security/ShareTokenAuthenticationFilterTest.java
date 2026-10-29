@@ -62,7 +62,7 @@ class ShareTokenAuthenticationFilterTest {
 
         FilterChain chain = runFilter(null);
 
-        assertThat(principal()).isEqualTo(USER_ID);
+        assertThat(principal()).isEqualTo(Caller.user(USER_ID));
         verify(chain).doFilter(any(), any());
     }
 
@@ -78,7 +78,7 @@ class ShareTokenAuthenticationFilterTest {
 
     private static void loginAs(UUID userId) {
         SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(userId, null, List.of()));
+                new UsernamePasswordAuthenticationToken(Caller.user(userId), null, List.of()));
     }
 
     private static Object principal() {

@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * của chính mình vẫn giữ quyền owner và người sửa đăng nhập được ghi vào updated_by.
  *
  * <p>Giống filter JWT, filter này không tự từ chối request: thiếu, sai hoặc token đã thu hồi thì cho đi
- * tiếp, endpoint tự trả 401/403. Không có header thì giữ nguyên principal UUID của filter JWT.
+ * tiếp, endpoint tự trả 401/403. Không có header thì giữ nguyên principal Caller.user của filter JWT.
  */
 public class ShareTokenAuthenticationFilter extends OncePerRequestFilter {
 
@@ -46,9 +46,11 @@ public class ShareTokenAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** userId do filter JWT đặt vào trước đó, null nếu chưa đăng nhập. */
+    /** userId do filter JWT đặt vào trước đó (principal Caller.user), null nếu chưa đăng nhập. */
     private static UUID currentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.getPrincipal() instanceof UUID userId ? userId : null;
+        return authentication != null && authentication.getPrincipal() instanceof Caller caller
+                ? caller.userId()
+                : null;
     }
 }

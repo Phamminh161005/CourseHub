@@ -1,6 +1,6 @@
 package com.diagramio.api.diagram;
 
-import com.diagramio.api.CallerResolver;
+import com.diagramio.api.CurrentUser;
 import com.diagramio.api.diagram.dto.CreateDiagramRequest;
 import com.diagramio.api.diagram.dto.DiagramResponse;
 import com.diagramio.api.diagram.dto.DiagramSummaryResponse;
@@ -8,6 +8,7 @@ import com.diagramio.api.diagram.dto.UpdateDiagramRequest;
 import com.diagramio.api.dto.ErrorResponse;
 import com.diagramio.api.dto.PageResponse;
 import com.diagramio.config.OpenApiConfig;
+import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +24,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -60,8 +60,7 @@ public class DiagramController {
             @Parameter(description = "UML hoặc ERD") @RequestParam(required = false) String diagramType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            Authentication authentication) {
-        UUID ownerId = CallerResolver.requireUserId(authentication);
+            @CurrentUser UUID ownerId) {
         List<Diagram> diagrams = diagramService.getDiagramsByOwner(ownerId, diagramType, title, page, size);
         long total = diagramService.countDiagramsByOwner(ownerId, diagramType, title);
         return pageResponse(diagrams, page, size, total);
@@ -74,11 +73,11 @@ public class DiagramController {
     @ApiResponse(responseCode = "201", description = "Đã tạo sơ đồ")
     public ResponseEntity<DiagramResponse> create(
             @Valid @RequestBody CreateDiagramRequest request,
-            Authentication authentication) {
+            @CurrentUser UUID ownerId) {
         Diagram diagram = new Diagram();
         diagram.setTitle(request.title());
         diagram.setDiagramType(request.diagramType());
-        diagram.setOwnerId(CallerResolver.requireUserId(authentication));
+        diagram.setOwnerId(ownerId);
         Diagram created = diagramService.createDiagram(diagram);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -106,8 +105,8 @@ public class DiagramController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Không tìm thấy sơ đồ",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public DiagramResponse getById(@PathVariable UUID id, Authentication authentication) {
-        return DiagramResponse.from(diagramService.getDiagramById(id, CallerResolver.resolveOrAnonymous(authentication)));
+    public DiagramResponse getById(@PathVariable UUID id, Caller caller) {
+        return DiagramResponse.from(diagramService.getDiagramById(id, caller));
     }
 
     @PutMapping("/{id}")
@@ -124,10 +123,10 @@ public class DiagramController {
     public DiagramResponse update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateDiagramRequest request,
-            Authentication authentication) {
+            Caller caller) {
         return DiagramResponse.from(diagramService.updateDiagram(
                 id, request.title(), request.diagramType(), request.data().toString(), request.isPublic(),
-                CallerResolver.resolve(authentication), request.version()));
+                caller, request.version()));
     }
 
     @DeleteMapping("/{id}")
@@ -138,8 +137,8 @@ public class DiagramController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Không tìm thấy sơ đồ",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public ResponseEntity<Void> delete(@PathVariable UUID id, Authentication authentication) {
-        diagramService.deleteDiagram(id, CallerResolver.resolve(authentication));
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Caller caller) {
+        diagramService.deleteDiagram(id, caller);
         return ResponseEntity.noContent().build();
     }
 

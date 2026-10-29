@@ -60,7 +60,7 @@ src/main/resources/db/migration/   V1__create_tables.sql, V2__seed_sample_user.s
 Một số điểm thiết kế chính:
 
 - Xác thực nằm trong hai filter thay vì lặp lại ở từng endpoint. Filter JWT đọc `Authorization: Bearer <token>`, filter thứ hai đọc `X-Share-Token` của link chia sẻ. Hai filter không tự chặn request; việc trả 401 do `SecurityConfig` quyết định.
-- Thông tin người gọi được gom vào `Caller` (người dùng đăng nhập và/hoặc link chia sẻ). Mọi luật quyền nằm trong `Caller` với bốn hàm `canView`, `canViewHistory`, `canEdit`, `canManage`, nên service không cần biết người gọi đến bằng cách nào.
+- Thông tin người gọi được gom vào `Caller` (người dùng đăng nhập và/hoặc link chia sẻ). Mọi luật quyền nằm trong `Caller` với bốn hàm `canView`, `canViewHistory`, `canEdit`, `canManage`, nên service không cần biết người gọi đến bằng cách nào. Controller không tự đọc thông tin xác thực mà nhận sẵn tham số `Caller` (khách nếu không đăng nhập, không có link) hoặc `@CurrentUser UUID` (endpoint cần tài khoản, thiếu thì 401).
 - Transaction được truyền vào domain qua interface `TransactionRunner`; tầng infrastructure cài đặt bằng `TransactionTemplate`. Nhờ vậy service vẫn là Java thuần mà vẫn bọc được nhiều bước trong một transaction (làm mới token, lưu và khôi phục phiên bản).
 - Chống ghi đè khi nhiều người cùng sửa bằng optimistic locking (`@Version`). Lưu và khôi phục phiên bản khóa dòng sơ đồ (`SELECT ... FOR UPDATE`) để các yêu cầu đồng thời xếp hàng.
 - Schema CSDL do Flyway quản lý, Hibernate chỉ kiểm tra schema khớp với entity (`ddl-auto: validate`). CSDL gồm năm bảng: `users`, `refresh_tokens`, `diagrams`, `diagram_versions`, `diagram_shares`.

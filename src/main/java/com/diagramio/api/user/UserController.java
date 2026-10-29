@@ -1,6 +1,6 @@
 package com.diagramio.api.user;
 
-import com.diagramio.api.CallerResolver;
+import com.diagramio.api.CurrentUser;
 import com.diagramio.api.dto.ErrorResponse;
 import com.diagramio.api.user.dto.ChangePasswordRequest;
 import com.diagramio.api.user.dto.UserResponse;
@@ -13,8 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,8 +39,8 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "Thông tin tài khoản")
     @ApiResponse(responseCode = "401", description = "Chưa đăng nhập (chỉ cầm token chia sẻ là chưa đủ)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public UserResponse me(Authentication authentication) {
-        return UserResponse.from(userService.getById(CallerResolver.requireUserId(authentication)));
+    public UserResponse me(@CurrentUser UUID userId) {
+        return UserResponse.from(userService.getById(userId));
     }
 
     @PatchMapping("/password")
@@ -51,9 +51,8 @@ public class UserController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Chưa đăng nhập (chỉ cầm token chia sẻ là chưa đủ)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public void changePassword(Authentication authentication,
+    public void changePassword(@CurrentUser UUID userId,
                                @Valid @RequestBody ChangePasswordRequest request) {
-        userService.changePassword(CallerResolver.requireUserId(authentication),
-                request.currentPassword(), request.newPassword());
+        userService.changePassword(userId, request.currentPassword(), request.newPassword());
     }
 }
