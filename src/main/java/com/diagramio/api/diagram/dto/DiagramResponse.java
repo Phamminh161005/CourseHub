@@ -11,7 +11,7 @@ public record DiagramResponse(
         String title,
         String diagramType,
         @JsonRawValue
-        @Schema(type = "object", example = "{\"nodes\": [], \"edges\": []}")
+        @Schema(types = "object", implementation = Object.class, example = "{\"nodes\": [], \"edges\": []}")
         String data,
         Integer version,
         boolean isPublic,
@@ -21,8 +21,8 @@ public record DiagramResponse(
         Instant updatedAt) {
 
     public static DiagramResponse from(Diagram diagram) {
-        return new DiagramResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType(),
-                diagram.getData(), diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(),
+        return new DiagramResponse(diagram.getId(), diagram.getTitle(), diagram.getDiagramType().name(),
+                diagram.getData().json(), diagram.getVersion(), diagram.isPublic(), diagram.getOwnerId(),
                 diagram.getUpdatedBy(), diagram.getCreatedAt(), diagram.getUpdatedAt());
     }
 }

@@ -2,6 +2,7 @@ package com.diagramio.infrastructure.diagram;
 
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
 import java.util.List;
 import java.util.Optional;
@@ -42,14 +43,14 @@ public class DiagramRepositoryAdapter implements DiagramRepository {
     }
 
     @Override
-    public List<Diagram> findByOwnerId(UUID ownerId, String diagramType, String title, int page, int size) {
+    public List<Diagram> findByOwnerId(UUID ownerId, DiagramType diagramType, String title, int page, int size) {
         return findPage(ownerId, diagramType, title, PageRequest.of(page, size))
                 .map(mapper::toDomain)
                 .getContent();
     }
 
     @Override
-    public long countByOwnerId(UUID ownerId, String diagramType, String title) {
+    public long countByOwnerId(UUID ownerId, DiagramType diagramType, String title) {
         return findPage(ownerId, diagramType, title, PageRequest.of(0, 1)).getTotalElements();
     }
 
@@ -71,16 +72,16 @@ public class DiagramRepositoryAdapter implements DiagramRepository {
     }
 
     private Page<DiagramEntity> findPage(
-            UUID ownerId, String diagramType, String title, PageRequest pageRequest) {
-        boolean hasDiagramType = diagramType != null && !diagramType.isBlank();
+            UUID ownerId, DiagramType diagramType, String title, PageRequest pageRequest) {
+        boolean hasDiagramType = diagramType != null;
         boolean hasTitle = title != null && !title.isBlank();
 
         if (hasDiagramType && hasTitle) {
             return repository.findByOwnerIdAndDiagramTypeAndTitleContainingIgnoreCase(
-                    ownerId, diagramType, title, pageRequest);
+                    ownerId, diagramType.name(), title, pageRequest);
         }
         if (hasDiagramType) {
-            return repository.findByOwnerIdAndDiagramType(ownerId, diagramType, pageRequest);
+            return repository.findByOwnerIdAndDiagramType(ownerId, diagramType.name(), pageRequest);
         }
         if (hasTitle) {
             return repository.findByOwnerIdAndTitleContainingIgnoreCase(ownerId, title, pageRequest);

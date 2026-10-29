@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.version.DiagramVersion;
 import com.diagramio.domain.version.DiagramVersionService;
 import com.diagramio.domain.version.RestoreResult;
@@ -44,8 +46,8 @@ class DiagramVersionConcurrencyTest {
     /** Người dùng mẫu được seed trong V2. */
     private static final UUID SEED_USER = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final Caller OWNER = Caller.user(SEED_USER);
-    private static final String DATA_A = "{\"nodes\": [{\"id\": \"A\"}], \"edges\": []}";
-    private static final String DATA_B = "{\"nodes\": [{\"id\": \"B\"}], \"edges\": []}";
+    private static final DiagramData DATA_A = DiagramData.fromStorage("{\"nodes\": [{\"id\": \"A\"}], \"edges\": []}");
+    private static final DiagramData DATA_B = DiagramData.fromStorage("{\"nodes\": [{\"id\": \"B\"}], \"edges\": []}");
 
     @Autowired
     private DiagramVersionService versionService;
@@ -78,19 +80,19 @@ class DiagramVersionConcurrencyTest {
                 .sorted((a, b) -> Integer.compare(a.versionNumber(), b.versionNumber()))
                 .toList();
         // Lần khôi phục đầu tiên sao lưu B; các lần sau sao lưu A (trạng thái lần trước để lại)
-        assertThat(backups.get(0).data()).contains("\"B\"");
-        assertThat(backups.subList(1, backups.size())).allSatisfy(b -> assertThat(b.data()).contains("\"A\""));
+        assertThat(backups.get(0).data().json()).contains("\"B\"");
+        assertThat(backups.subList(1, backups.size())).allSatisfy(b -> assertThat(b.data().json()).contains("\"A\""));
         assertThat(backups).extracting(DiagramVersion::versionNumber)
                 .isEqualTo(IntStream.rangeClosed(2, 11).boxed().toList());
 
         Diagram restored = diagramRepository.findById(diagram.getId()).orElseThrow();
         assertThat(restored.getVersion()).isEqualTo(versionBefore + 10);
-        assertThat(restored.getData()).contains("\"A\"");
+        assertThat(restored.getData().json()).contains("\"A\"");
     }
 
-    private Diagram newDiagram(String data) {
+    private Diagram newDiagram(DiagramData data) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        return diagramRepository.save(new Diagram(null, "race", "ERD", data, 1, false, SEED_USER, SEED_USER, now, now));
+        return diagramRepository.save(new Diagram(null, "race", DiagramType.ERD, data, 1, false, SEED_USER, SEED_USER, now, now));
     }
 
     /** Chạy n tác vụ cùng một thời điểm và trả về kết quả; ném lỗi nếu có tác vụ thất bại. */

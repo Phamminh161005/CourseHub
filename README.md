@@ -60,8 +60,10 @@ src/main/resources/db/migration/   V1__create_tables.sql, V2__seed_sample_user.s
 Một số điểm thiết kế chính:
 
 - Xác thực nằm trong hai filter thay vì lặp lại ở từng endpoint. Filter JWT đọc `Authorization: Bearer <token>`, filter thứ hai đọc `X-Share-Token` của link chia sẻ. Hai filter không tự chặn request; việc trả 401 do `SecurityConfig` quyết định.
-- Thông tin người gọi được gom vào `Caller` (người dùng đăng nhập và/hoặc link chia sẻ). Mọi luật quyền nằm trong `Caller` với bốn hàm `canView`, `canViewHistory`, `canEdit`, `canManage`, nên service không cần biết người gọi đến bằng cách nào.
-- Transaction được truyền vào domain qua interface `TransactionRunner`; tầng infrastructure cài đặt bằng `TransactionTemplate`. Nhờ vậy service vẫn là Java thuần mà vẫn bọc được nhiều bước trong một transaction (làm mới token, lưu và khôi phục phiên bản).
+- Thông tin người gọi được gom vào `Caller` (người dùng đăng nhập và/hoặc link chia sẻ). Mọi luật quyền nằm trong `Caller` với bốn hàm `canView`, `canViewHistory`, `canEdit`, `canManage`, nên service không cần biết người gọi đến bằng cách nào. Controller không tự đọc thông tin xác thực mà nhận sẵn tham số `Caller` (khách nếu không đăng nhập, không có link) hoặc `@CurrentUser UUID` (endpoint cần tài khoản, thiếu thì 401).
+- Transaction được truyền vào domain qua interface `TransactionRunner`; tầng infrastructure cài đặt bằng `TransactionTemplate`. Nhờ vậy service vẫn là Java thuần mà vẫn bọc được nhiều bước trong một transaction (làm mới token, lưu và khôi phục phiên bản). Khi nào cần transaction được ghi thành quy tắc trong `AGENTS.md`.
+- Quyền trên sơ đồ được kiểm tra ở một chỗ: `DiagramAccess.require(id, caller, Permission)` trả 404, 401 hoặc 403 thống nhất cho mọi module.
+- Dữ liệu sơ đồ là kiểu `DiagramData` (kiểm tra cấu trúc và 2 MB khi tạo từ request), loại sơ đồ là enum `DiagramType`. `Diagram` tách metadata (`updateMetadata`) khỏi nội dung (`replaceContent`); mọi thay đổi nội dung, kể cả khôi phục phiên bản, đi qua `replaceContent`. Đây là chỗ nối cho pha 2 (sửa theo thao tác, sự kiện, cache).
 - Chống ghi đè khi nhiều người cùng sửa bằng optimistic locking (`@Version`). Lưu và khôi phục phiên bản khóa dòng sơ đồ (`SELECT ... FOR UPDATE`) để các yêu cầu đồng thời xếp hàng.
 - Schema CSDL do Flyway quản lý, Hibernate chỉ kiểm tra schema khớp với entity (`ddl-auto: validate`). CSDL gồm năm bảng: `users`, `refresh_tokens`, `diagrams`, `diagram_versions`, `diagram_shares`.
 
@@ -85,12 +87,12 @@ Mọi endpoint có tiền tố `/api/v1`. Đặc tả đầy đủ (request, res
 | | DELETE | `/diagrams/{id}` | Xóa sơ đồ | Chủ |
 | Phiên bản | GET | `/diagrams/{id}/versions` | Danh sách phiên bản, mới nhất trước | Chủ hoặc có link |
 | | POST | `/diagrams/{id}/versions` | Lưu phiên bản mới kèm ghi chú | Chủ hoặc link edit |
-| | GET | `/diagrams/{id}/versions/{versionId}` | Chi tiết một phiên bản | Chủ hoặc có link |
-| | POST | `/diagrams/{id}/versions/{versionId}/restore` | Khôi phục về phiên bản đã chọn | Chủ hoặc link edit |
+| | GET | `/diagrams/{id}/versions/{version_id}` | Chi tiết một phiên bản | Chủ hoặc có link |
+| | POST | `/diagrams/{id}/versions/{version_id}/restore` | Khôi phục về phiên bản đã chọn | Chủ hoặc link edit |
 | Chia sẻ | GET | `/diagrams/{id}/shares` | Danh sách link chia sẻ | Chủ |
 | | POST | `/diagrams/{id}/shares` | Tạo link quyền `view` hoặc `edit` | Chủ |
-| | PATCH | `/diagrams/{id}/shares/{shareId}` | Đổi quyền của link | Chủ |
-| | DELETE | `/diagrams/{id}/shares/{shareId}` | Thu hồi link | Chủ |
+| | PATCH | `/diagrams/{id}/shares/{share_id}` | Đổi quyền của link | Chủ |
+| | DELETE | `/diagrams/{id}/shares/{share_id}` | Thu hồi link | Chủ |
 | | GET | `/shares/{token}` | Mở link chia sẻ: trả sơ đồ và quyền | Công khai |
 | Hệ thống | GET | `/health` | Trạng thái dịch vụ và kết nối CSDL | Công khai |
 
@@ -113,11 +115,13 @@ Mọi lỗi trả cùng một khung JSON:
 
 | Mã | Khi nào |
 |---|---|
-| 400 | Thiếu trường, sai định dạng, `data` sai cấu trúc hoặc quá 2 MB, `size` lớn hơn 100, mật khẩu cũ sai |
-| 401 | Chưa xác thực, token sai hoặc hết hạn, sai email hoặc mật khẩu |
-| 403 | Đã biết người gọi nhưng không đủ quyền với sơ đồ |
-| 404 | Không tìm thấy sơ đồ, phiên bản, link; token chia sẻ đã bị thu hồi |
+| 400 | Thiếu trường, sai định dạng, `title` dài hơn 255 ký tự, `data` sai cấu trúc hoặc quá 2 MB, `size` lớn hơn 100, mật khẩu cũ sai |
+| 401 | Chưa xác thực, token sai hoặc hết hạn, sai email hoặc mật khẩu; chỉ cầm `X-Share-Token` khi gọi endpoint cần tài khoản (`/users/me`, đăng xuất, sơ đồ của tôi, quản lý link); bị từ chối trên một sơ đồ khi không có tài khoản lẫn link của sơ đồ đó (ví dụ khách mở sơ đồ riêng tư) |
+| 403 | Đã biết người gọi (có tài khoản, hoặc có link của chính sơ đồ đó) nhưng không đủ quyền với sơ đồ |
+| 404 | Không tìm thấy sơ đồ, phiên bản, link, đường dẫn; token chia sẻ đã bị thu hồi |
+| 405 | Sai method HTTP (header `Allow` liệt kê method hợp lệ) |
 | 409 | Lệch `version` khi cập nhật hoặc lưu phiên bản; email hay username đã tồn tại |
+| 415 | Sai `Content-Type` (API nhận `application/json`) |
 | 503 | `/health` khi mất kết nối CSDL |
 
 ## 5. Cách chạy
@@ -153,8 +157,12 @@ curl -s -X POST localhost:8080/api/v1/diagrams -H "Authorization: Bearer $TOKEN"
 
 Một số việc thường làm khác:
 
-- Chạy test: `./mvnw test`. Các test CSDL dùng Testcontainers nên cần Docker đang chạy; không có Docker thì các test này tự bỏ qua.
-- Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`.
+- Chạy test: `./mvnw test` (cần Docker đang chạy). Có ba nhóm test:
+  - Unit test và test controller (MockMvc): chạy được ở mọi máy.
+  - Test CSDL trong `infrastructure` (Testcontainers): không có Docker thì tự bỏ qua.
+  - Test E2E hộp đen trong `src/test/java/com/diagramio/e2e`: khởi động cả app trên cổng ngẫu nhiên với PostgreSQL thật và chỉ gọi API qua HTTP, kiểm tra mọi endpoint với từng vai trò (chủ, link edit, link view, người khác, khách). Nhóm này cố ý báo lỗi khi không có Docker để không "xanh giả". Chạy riêng: `./mvnw test -Dtest='com.diagramio.e2e.**'`; bỏ qua: `./mvnw test -Dtest='!com.diagramio.e2e.**'`.
+  - Dùng JDK mới hơn 21 (ví dụ 25) thì thêm `-DargLine="-Dnet.bytebuddy.experimental=true"` để Mockito chạy được.
+- Xuất lại đặc tả API sau khi đổi endpoint (app đang chạy): `curl -o docs/openapi.yaml http://localhost:8080/v3/api-docs.yaml`. Khóa được sắp xếp cố định và server là URL tương đối, nên file chỉ thay đổi khi API thay đổi; diff khác rỗng nghĩa là phải commit lại file này.
 - Thay đổi CSDL: thêm file migration mới dạng `V<số>__mo_ta.sql` (hai dấu gạch dưới) trong `src/main/resources/db/migration`, không sửa các file đã có.
 
 ## 6. Kiểm thử tải trên Kaggle\

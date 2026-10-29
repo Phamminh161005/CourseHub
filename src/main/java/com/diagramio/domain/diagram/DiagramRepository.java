@@ -9,9 +9,10 @@ public interface DiagramRepository {
 
     Optional<Diagram> findById(UUID id);
 
-    List<Diagram> findByOwnerId(UUID ownerId, String diagramType, String title, int page, int size);
+    /** diagramType null = không lọc theo loại; title rỗng = không tìm theo tên. */
+    List<Diagram> findByOwnerId(UUID ownerId, DiagramType diagramType, String title, int page, int size);
 
-    long countByOwnerId(UUID ownerId, String diagramType, String title);
+    long countByOwnerId(UUID ownerId, DiagramType diagramType, String title);
 
     List<Diagram> findPublicDiagrams(int page, int size);
 

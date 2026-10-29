@@ -2,10 +2,10 @@ package com.diagramio.domain.version;
 
 import com.diagramio.domain.TransactionRunner;
 import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.DiagramAccess;
+import com.diagramio.domain.access.Permission;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
-import com.diagramio.domain.exception.DiagramNotFoundException;
-import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
@@ -24,6 +24,7 @@ public class DiagramVersionService {
     public static final int MAX_NOTE_LENGTH = 255;
 
     private final DiagramRepository diagramRepository;
+    private final DiagramAccess access;
     private final DiagramVersionRepository versionRepository;
     private final TransactionRunner transactionRunner;
     private final Clock clock;
@@ -33,20 +34,19 @@ public class DiagramVersionService {
                                  TransactionRunner transactionRunner,
                                  Clock clock) {
         this.diagramRepository = diagramRepository;
+        this.access = new DiagramAccess(diagramRepository);
         this.versionRepository = versionRepository;
         this.transactionRunner = transactionRunner;
         this.clock = clock;
     }
 
     public List<DiagramVersion> listVersions(UUID diagramId, Caller caller) {
-        Diagram diagram = findDiagram(diagramId);
-        requireHistoryAccess(diagram, caller);
+        access.require(diagramId, caller, Permission.VIEW_HISTORY);
         return versionRepository.findByDiagramId(diagramId);
     }
 
     public DiagramVersion getVersion(UUID diagramId, UUID versionId, Caller caller) {
-        Diagram diagram = findDiagram(diagramId);
-        requireHistoryAccess(diagram, caller);
+        access.require(diagramId, caller, Permission.VIEW_HISTORY);
         return findVersion(diagramId, versionId);
     }
 
@@ -61,8 +61,7 @@ public class DiagramVersionService {
         }
         return transactionRunner.inTransaction(() -> {
             versionRepository.lockDiagram(diagramId);
-            Diagram diagram = findDiagram(diagramId);
-            requireEditAccess(diagram, caller);
+            Diagram diagram = access.require(diagramId, caller, Permission.EDIT);
             if (expectedVersion != null && !expectedVersion.equals(diagram.getVersion())) {
                 throw new OptimisticLockConflictException(diagramId, expectedVersion, diagram.getVersion());
             }
@@ -78,16 +77,13 @@ public class DiagramVersionService {
     public RestoreResult restore(UUID diagramId, UUID versionId, Caller caller) {
         return transactionRunner.inTransaction(() -> {
             versionRepository.lockDiagram(diagramId);
-            Diagram diagram = findDiagram(diagramId);
-            requireEditAccess(diagram, caller);
+            Diagram diagram = access.require(diagramId, caller, Permission.EDIT);
             DiagramVersion target = findVersion(diagramId, versionId);
 
             DiagramVersion backup = snapshot(diagram,
                     "Auto backup before restoring version " + target.versionNumber(), caller);
 
-            diagram.setData(target.data());
-            diagram.setUpdatedBy(caller.userId());
-            diagram.setUpdatedAt(Instant.now(clock));
+            diagram.replaceContent(target.data(), caller.userId(), Instant.now(clock));
             Diagram restored = diagramRepository.save(diagram);
             return new RestoreResult(restored, backup);
         });
@@ -100,25 +96,9 @@ public class DiagramVersionService {
         return versionRepository.save(version);
     }
 
-    private Diagram findDiagram(UUID diagramId) {
-        return diagramRepository.findById(diagramId)
-                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found: " + diagramId));
-    }
-
     private DiagramVersion findVersion(UUID diagramId, UUID versionId) {
         return versionRepository.findByIdAndDiagramId(versionId, diagramId)
                 .orElseThrow(() -> new NotFoundException("Version not found: " + versionId));
     }
 
-    private void requireHistoryAccess(Diagram diagram, Caller caller) {
-        if (!caller.canViewHistory(diagram)) {
-            throw new ForbiddenException("You do not have access to this diagram's version history");
-        }
-    }
-
-    private void requireEditAccess(Diagram diagram, Caller caller) {
-        if (!caller.canEdit(diagram)) {
-            throw new ForbiddenException("Only the owner or an editor can save or restore versions");
-        }
-    }
 }

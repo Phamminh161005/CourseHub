@@ -12,7 +12,7 @@ public record UpdateDiagramRequest(
         @NotNull @Pattern(regexp = "UML|ERD") String diagramType,
         @NotNull Integer version,
         @NotNull
-        @Schema(type = "object", example = "{\"nodes\": [], \"edges\": []}")
+        @Schema(types = "object", implementation = Object.class, example = "{\"nodes\": [], \"edges\": []}")
         JsonNode data,
         boolean isPublic) {
 }

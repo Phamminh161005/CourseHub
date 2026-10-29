@@ -1,4 +1,4 @@
-package com.diagramio.api.diagram.dto;
+package com.diagramio.api.dto;
 
 import java.util.List;
 

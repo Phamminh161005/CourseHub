@@ -12,9 +12,12 @@ import static org.mockito.Mockito.when;
 
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.diagram.DiagramData;
+import com.diagramio.domain.diagram.DiagramType;
+import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
-import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
+import com.diagramio.domain.exception.UnauthorizedException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,13 +43,13 @@ class DiagramServiceTest {
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Diagram diagram = new Diagram();
         diagram.setTitle("Orders");
-        diagram.setDiagramType("ERD");
+        diagram.setDiagramType(DiagramType.ERD);
         diagram.setData(null);
         diagram.setPublic(true);
 
         Diagram created = service.createDiagram(diagram);
 
-        assertEquals(DiagramService.DEFAULT_DATA, created.getData());
+        assertEquals(DiagramData.EMPTY, created.getData());
         assertFalse(created.isPublic());
         assertEquals(1, created.getVersion());
         verify(repository).save(diagram);
@@ -60,7 +63,7 @@ class DiagramServiceTest {
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Diagram updated = service.updateDiagram(
-                id, "Updated", "UML", "{\"nodes\": [], \"edges\": []}", false,
+                id, "Updated", DiagramType.UML, DiagramData.fromStorage("{\"nodes\": [], \"edges\": []}"), false,
                 Caller.user(current.getOwnerId()), 3);
 
         // Domain giữ nguyên version đã đối chiếu; @Version ở tầng persistence tăng lên 4 khi ghi
@@ -76,7 +79,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
 
         assertThrows(OptimisticLockConflictException.class, () -> service.updateDiagram(
-                id, "Updated", "UML", "{\"nodes\": [], \"edges\": []}", false,
+                id, "Updated", DiagramType.UML, DiagramData.fromStorage("{\"nodes\": [], \"edges\": []}"), false,
                 Caller.user(current.getOwnerId()), 2));
 
         verify(repository, never()).save(any(Diagram.class));
@@ -84,19 +87,15 @@ class DiagramServiceTest {
 
     // ---- cấu trúc data ----
 
+    // Luật cấu trúc data (nodes/edges, 2 MB) nằm trong DiagramData, xem DiagramDataTest.
     @Test
-    void updateDiagramRejectsDataWithoutNodesAndEdgesArrays() {
+    void updateDiagramRequiresData() {
         UUID id = UUID.randomUUID();
         Diagram current = diagram(id, 1);
         when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
-        Caller owner = Caller.user(current.getOwnerId());
 
-        for (String data : new String[] {"{\"foo\": 1}", "{\"nodes\": \"abc\", \"edges\": []}",
-                "{\"nodes\": []}", "\"{\\\"nodes\\\": []}\"", "[]", "not json"}) {
-            InvalidInputException ex = assertThrows(InvalidInputException.class,
-                    () -> service.updateDiagram(id, "Orders", "ERD", data, false, owner, 1), data);
-            assertTrue(ex.getMessage().startsWith("data must be"), data);
-        }
+        assertThrows(InvalidInputException.class, () -> service.updateDiagram(
+                id, "Orders", DiagramType.ERD, null, false, Caller.user(current.getOwnerId()), 1));
         verify(repository, never()).save(any(Diagram.class));
     }
 
@@ -118,8 +117,8 @@ class DiagramServiceTest {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
-        assertThrows(UnauthorizedDiagramAccessException.class, () -> service.updateDiagram(
-                id, "Hacked", "ERD", DiagramService.DEFAULT_DATA, false, Caller.user(UUID.randomUUID()), 1));
+        assertThrows(ForbiddenException.class, () -> service.updateDiagram(
+                id, "Hacked", DiagramType.ERD, DiagramData.EMPTY, false, Caller.user(UUID.randomUUID()), 1));
 
         verify(repository, never()).save(any(Diagram.class));
     }
@@ -129,8 +128,8 @@ class DiagramServiceTest {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
-        assertThrows(UnauthorizedDiagramAccessException.class, () -> service.updateDiagram(
-                id, "Updated", "ERD", DiagramService.DEFAULT_DATA, false,
+        assertThrows(ForbiddenException.class, () -> service.updateDiagram(
+                id, "Updated", DiagramType.ERD, DiagramData.EMPTY, false,
                 Caller.shareToken(id, ShareRole.VIEW), 1));
 
         verify(repository, never()).save(any(Diagram.class));
@@ -142,7 +141,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Diagram updated = service.updateDiagram(id, "Updated", "ERD", DiagramService.DEFAULT_DATA, true,
+        Diagram updated = service.updateDiagram(id, "Updated", DiagramType.ERD, DiagramData.EMPTY, true,
                 Caller.shareToken(id, ShareRole.EDIT), 1);
 
         assertEquals("Updated", updated.getTitle());
@@ -157,7 +156,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Diagram updated = service.updateDiagram(id, "Updated", "ERD", DiagramService.DEFAULT_DATA, false,
+        Diagram updated = service.updateDiagram(id, "Updated", DiagramType.ERD, DiagramData.EMPTY, false,
                 new Caller(editorId, id, ShareRole.EDIT), 1);
 
         assertEquals(editorId, updated.getUpdatedBy());
@@ -170,7 +169,7 @@ class DiagramServiceTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.of(current));
         when(repository.save(any(Diagram.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Diagram updated = service.updateDiagram(id, "Orders", "ERD", DiagramService.DEFAULT_DATA, true,
+        Diagram updated = service.updateDiagram(id, "Orders", DiagramType.ERD, DiagramData.EMPTY, true,
                 Caller.user(current.getOwnerId()), 1);
 
         assertTrue(updated.isPublic());
@@ -180,11 +179,12 @@ class DiagramServiceTest {
     // ---- phân quyền xem ----
 
     @Test
-    void getDiagramByIdRejectsAnonymousForPrivateDiagram() {
+    void getDiagramByIdRejectsAnonymousForPrivateDiagramWith401() {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
-        assertThrows(UnauthorizedDiagramAccessException.class,
+        // Khách (không tài khoản, không link): đăng nhập có thể đổi kết quả nên là 401, không phải 403
+        assertThrows(UnauthorizedException.class,
                 () -> service.getDiagramById(id, Caller.anonymous()));
     }
 
@@ -206,10 +206,10 @@ class DiagramServiceTest {
         Diagram diagram = diagram(id, 1);
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram));
 
-        assertThrows(UnauthorizedDiagramAccessException.class,
+        assertThrows(ForbiddenException.class,
                 () -> service.deleteDiagram(id, Caller.user(UUID.randomUUID())));
         // link edit được sửa nhưng không được xóa
-        assertThrows(UnauthorizedDiagramAccessException.class,
+        assertThrows(ForbiddenException.class,
                 () -> service.deleteDiagram(id, Caller.shareToken(id, ShareRole.EDIT)));
 
         verify(repository, never()).deleteById(id);
@@ -227,7 +227,7 @@ class DiagramServiceTest {
     }
 
     private Diagram diagram(UUID id, int version) {
-        return new Diagram(id, "Orders", "ERD", DiagramService.DEFAULT_DATA, version,
+        return new Diagram(id, "Orders", DiagramType.ERD, DiagramData.EMPTY, version,
                 false, UUID.randomUUID(), null, null, null);
     }
 }

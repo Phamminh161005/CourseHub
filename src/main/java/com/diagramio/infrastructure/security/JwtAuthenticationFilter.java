@@ -1,5 +1,6 @@
 package com.diagramio.infrastructure.security;
 
+import com.diagramio.domain.access.Caller;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,7 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Đọc "Authorization: Bearer <JWT>". Token hợp lệ thì đặt người dùng hiện tại (principal = UUID id).
+ * Đọc "Authorization: Bearer <JWT>". Token hợp lệ thì đặt người dùng hiện tại (principal = Caller.user(id)).
  *
  * <p>Filter này KHÔNG bao giờ tự từ chối request: thiếu hoặc sai token thì cho đi tiếp, việc trả 401
  * do SecurityConfig quyết định. Nhờ vậy endpoint công khai vẫn chạy và filter khác (X-Share-Token)
@@ -38,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             jwtTokenProvider.parseUserId(header.substring(BEARER_PREFIX.length()).trim())
                     .ifPresent(userId -> SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken(userId, null, List.of())));
+                            new UsernamePasswordAuthenticationToken(Caller.user(userId), null, List.of())));
         }
         chain.doFilter(request, response);
     }

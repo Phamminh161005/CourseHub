@@ -1,8 +1,9 @@
 package com.diagramio.domain.share;
 
 import com.diagramio.domain.access.Caller;
+import com.diagramio.domain.access.DiagramAccess;
+import com.diagramio.domain.access.Permission;
 import com.diagramio.domain.access.ShareRole;
-import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.diagram.Diagram;
 import com.diagramio.domain.diagram.DiagramRepository;
@@ -18,25 +19,26 @@ import java.util.UUID;
 /**
  * Tầng nghiệp vụ xử lý Chia sẻ & Phân quyền sơ đồ.
  * Thuần Java (Plain Java), không dùng bất kỳ annotation nào của Spring hay JPA.
- * Quản lý liên kết chỉ dành cho chủ sở hữu (Caller.canManage).
+ * Quản lý liên kết chỉ dành cho chủ sở hữu (Permission.MANAGE qua DiagramAccess).
  */
 public class ShareService {
 
     private final DiagramShareRepository shareRepository;
     private final DiagramRepository diagramRepository;
+    private final DiagramAccess access;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ShareService(DiagramShareRepository shareRepository, DiagramRepository diagramRepository) {
         this.shareRepository = Objects.requireNonNull(shareRepository, "shareRepository must not be null");
         this.diagramRepository = Objects.requireNonNull(diagramRepository, "diagramRepository must not be null");
+        this.access = new DiagramAccess(diagramRepository);
     }
 
     /**
      * Lấy danh sách liên kết chia sẻ của sơ đồ. Chỉ chủ sở hữu mới có quyền xem.
      */
     public List<DiagramShare> getShares(UUID diagramId, Caller caller) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
-                "Only the diagram owner can view its share links");
+        Diagram diagram = access.require(diagramId, caller, Permission.MANAGE);
         return shareRepository.findByDiagramId(diagram.getId());
     }
 
@@ -44,8 +46,7 @@ public class ShareService {
      * Tạo liên kết chia sẻ mới (role: view hoặc edit). Chỉ chủ sở hữu mới có quyền tạo.
      */
     public DiagramShare createShare(UUID diagramId, ShareRole role, Caller caller) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
-                "Only the diagram owner can create share links");
+        Diagram diagram = access.require(diagramId, caller, Permission.MANAGE);
 
         DiagramShare share = new DiagramShare(
                 UUID.randomUUID(),
@@ -64,8 +65,7 @@ public class ShareService {
      * thì trả 404, không tạo lại link đã thu hồi.
      */
     public DiagramShare updateShareRole(UUID diagramId, UUID shareId, ShareRole newRole, Caller caller) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
-                "Only the diagram owner can change share roles");
+        Diagram diagram = access.require(diagramId, caller, Permission.MANAGE);
 
         if (!shareRepository.updateRole(shareId, diagram.getId(), newRole)) {
             throw new NotFoundException("Share link not found");
@@ -77,8 +77,7 @@ public class ShareService {
      * Thu hồi liên kết chia sẻ. Chỉ chủ sở hữu mới có quyền thu hồi.
      */
     public void revokeShare(UUID diagramId, UUID shareId, Caller caller) {
-        Diagram diagram = getDiagramAndVerifyOwner(diagramId, caller,
-                "Only the diagram owner can revoke share links");
+        Diagram diagram = access.require(diagramId, caller, Permission.MANAGE);
 
         findShareOfDiagram(diagram, shareId);
         shareRepository.deleteById(shareId);
@@ -121,21 +120,6 @@ public class ShareService {
         }
         return shareRepository.findByShareToken(token.trim())
                 .map(share -> Caller.shareToken(share.getDiagramId(), share.getRole()));
-    }
-
-    private Diagram getDiagramAndVerifyOwner(UUID diagramId, Caller caller, String forbiddenMessage) {
-        if (diagramId == null) {
-            throw new NotFoundException("Diagram not found");
-        }
-
-        Diagram diagram = diagramRepository.findById(diagramId)
-                .orElseThrow(() -> new NotFoundException("Diagram not found: " + diagramId));
-
-        if (!caller.canManage(diagram)) {
-            throw new ForbiddenException(forbiddenMessage);
-        }
-
-        return diagram;
     }
 
     private DiagramShare findShareOfDiagram(Diagram diagram, UUID shareId) {

@@ -1,10 +1,15 @@
 package com.diagramio.config;
 
+import com.diagramio.api.CurrentUser;
+import com.diagramio.domain.access.Caller;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import java.util.List;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,6 +23,13 @@ public class OpenApiConfig {
     public static final String BEARER_AUTH = "bearerAuth";
     public static final String SHARE_TOKEN = "shareToken";
 
+    static {
+        // Caller và @CurrentUser do CallerArgumentResolver cấp từ token, không phải tham số client gửi
+        SpringDocUtils.getConfig()
+                .addRequestWrapperToIgnore(Caller.class)
+                .addAnnotationsToIgnore(CurrentUser.class);
+    }
+
     @Bean
     public OpenAPI openApi() {
         return new OpenAPI()
@@ -27,6 +39,9 @@ public class OpenApiConfig {
                         .description("REST API cho dịch vụ vẽ sơ đồ UML/ERD trực tuyến. "
                                 + "Đăng nhập lấy access token (bearerAuth), hoặc dùng token của link chia sẻ "
                                 + "qua header X-Share-Token (shareToken) để xem/sửa sơ đồ được chia sẻ."))
+                // URL tương đối: Swagger UI gọi đúng host đang mở nó (máy dev, Docker, sau proxy),
+                // và docs/openapi.yaml xuất lại không phụ thuộc cổng đang chạy
+                .servers(List.of(new Server().url("/").description("Cùng host với Swagger UI")))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)

@@ -28,6 +28,8 @@
 - The API layer calls domain services only, never `infrastructure` directly.
 - `ArchitectureTest` enforces these rules; keep it green.
 - Authentication is done once in a security filter (JWT or `X-Share-Token`), not repeated in each endpoint.
+- Controllers receive the caller as a method parameter, resolved by `CallerArgumentResolver`: `Caller caller` for diagram, version and public endpoints (anonymous when there is no login or link), or `@CurrentUser UUID userId` for endpoints that need an account (401 otherwise). Never read `Authentication` or use `@AuthenticationPrincipal` in a controller.
+- Services check diagram permissions only through `DiagramAccess.require(diagramId, caller, Permission)` (`VIEW`, `VIEW_HISTORY`, `EDIT`, `MANAGE`): 404 if missing, 401 if the caller has neither an account nor a link to that diagram, 403 otherwise. Do not write `caller.canX(...)` checks or throw access exceptions by hand in services.
 
 ## Database Migrations
 
@@ -59,6 +61,7 @@
 - Generate cryptographically secure, unique sharing tokens and invalidate them immediately when revoked.
 - Do not expose private diagram data, credentials, refresh tokens, or internal implementation details in public responses.
 - Validate and constrain request bodies, including the maximum 2 MB diagram JSON payload, before persistence.
+- Diagram JSON is a `DiagramData` value object: build it with `DiagramData.of(json)` from user input (validates the `nodes`/`edges` shape and 2 MB) and with `DiagramData.fromStorage(json)` only for data read back from the database. Do not pass raw JSON strings through the domain.
 
 ## Data Integrity and Concurrency
 
@@ -67,6 +70,18 @@
 - Treat saved diagram versions as immutable snapshots.
 - Before restoring an old version, snapshot the current state, then copy the selected snapshot into the current diagram state atomically.
 - Keep authorization checks, version checks, and related writes within the appropriate transaction boundaries.
+- Use transactions by rule, not everywhere. Domain services get them through the `TransactionRunner` port:
+
+| Operation | Transaction | Example |
+|---|---|---|
+| Read, check, then write | Yes (`TransactionRunner`) | restore a version, rotate a refresh token |
+| Several rows or tables that must stay consistent | Yes | restore = backup snapshot + overwrite diagram |
+| Concurrent requests must queue | Yes, plus a row lock (`SELECT ... FOR UPDATE`) | save or restore a version |
+| One write that is already safe on its own | No | delete a share; update a diagram (guarded by `@Version`); change a share role (one conditional `UPDATE`) |
+| Pure reads | No | get a diagram, list versions |
+| Calls to outside systems (email, HTTP, files) | Never inside a transaction | do them after commit |
+
+- Keep transactions short: each one holds a pooled connection and any row locks until it ends.
 
 ## Implementation Practices
 

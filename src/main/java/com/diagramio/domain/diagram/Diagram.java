@@ -8,8 +8,8 @@ public class Diagram {
 
     private UUID id;
     private String title;
-    private String diagramType;
-    private String data;
+    private DiagramType diagramType;
+    private DiagramData data;
     private Integer version;
     private boolean isPublic;
     private UUID ownerId;
@@ -20,7 +20,7 @@ public class Diagram {
     public Diagram() {
     }
 
-    public Diagram(UUID id, String title, String diagramType, String data, Integer version,
+    public Diagram(UUID id, String title, DiagramType diagramType, DiagramData data, Integer version,
                    boolean isPublic, UUID ownerId, UUID updatedBy, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.title = title;
@@ -38,14 +38,39 @@ public class Diagram {
         return ownerId != null && ownerId.equals(userId);
     }
 
+    /**
+     * Đổi metadata (tên, loại). Tách khỏi nội dung vì hai phần thay đổi theo cách khác nhau:
+     * metadata ít đổi, nội dung đổi liên tục (pha 2: sửa theo từng thao tác, cộng tác thời gian thực).
+     */
+    public void updateMetadata(String title, DiagramType diagramType, UUID changedBy, Instant changedAt) {
+        this.title = title;
+        this.diagramType = diagramType;
+        touch(changedBy, changedAt);
+    }
+
+    /**
+     * Thay toàn bộ nội dung (nodes, edges). Mọi thay đổi nội dung (cập nhật sơ đồ, khôi phục phiên bản)
+     * đi qua đúng phương thức này, để pha 2 thêm sửa theo thao tác, sự kiện hay cache ở một chỗ.
+     */
+    public void replaceContent(DiagramData newData, UUID changedBy, Instant changedAt) {
+        this.data = newData;
+        touch(changedBy, changedAt);
+    }
+
+    /** changedBy là người đăng nhập, null nếu sửa qua link mà không đăng nhập. */
+    private void touch(UUID changedBy, Instant changedAt) {
+        this.updatedBy = changedBy;
+        this.updatedAt = changedAt;
+    }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
-    public String getDiagramType() { return diagramType; }
-    public void setDiagramType(String diagramType) { this.diagramType = diagramType; }
-    public String getData() { return data; }
-    public void setData(String data) { this.data = data; }
+    public DiagramType getDiagramType() { return diagramType; }
+    public void setDiagramType(DiagramType diagramType) { this.diagramType = diagramType; }
+    public DiagramData getData() { return data; }
+    public void setData(DiagramData data) { this.data = data; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public boolean isPublic() { return isPublic; }

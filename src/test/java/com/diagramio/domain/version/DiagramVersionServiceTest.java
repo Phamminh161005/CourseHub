@@ -13,7 +13,9 @@ import com.diagramio.domain.TransactionRunner;
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.NotFoundException;
@@ -32,8 +34,8 @@ import org.mockito.InOrder;
 class DiagramVersionServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-24T10:00:00Z");
-    private static final String CURRENT_DATA = "{\"nodes\": [{\"id\": \"current\"}], \"edges\": []}";
-    private static final String OLD_DATA = "{\"nodes\": [{\"id\": \"old\"}], \"edges\": []}";
+    private static final DiagramData CURRENT_DATA = DiagramData.fromStorage("{\"nodes\": [{\"id\": \"current\"}], \"edges\": []}");
+    private static final DiagramData OLD_DATA = DiagramData.fromStorage("{\"nodes\": [{\"id\": \"old\"}], \"edges\": []}");
 
     private final DiagramRepository diagramRepository = mock(DiagramRepository.class);
     private final DiagramVersionRepository versionRepository = mock(DiagramVersionRepository.class);
@@ -52,7 +54,7 @@ class DiagramVersionServiceTest {
 
     @BeforeEach
     void setUp() {
-        diagram = new Diagram(diagramId, "Shop ERD", "ERD", CURRENT_DATA, 5, false, ownerId, ownerId,
+        diagram = new Diagram(diagramId, "Shop ERD", DiagramType.ERD, CURRENT_DATA, 5, false, ownerId, ownerId,
                 NOW.minusSeconds(3600), NOW.minusSeconds(60));
         when(diagramRepository.findById(diagramId)).thenReturn(Optional.of(diagram));
         when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -258,7 +260,7 @@ class DiagramVersionServiceTest {
         verify(diagramRepository, never()).save(any());
     }
 
-    private DiagramVersion version(UUID id, int number, String data) {
+    private DiagramVersion version(UUID id, int number, DiagramData data) {
         return new DiagramVersion(id, diagramId, number, data, "note " + number, ownerId, NOW.minusSeconds(600));
     }
 }

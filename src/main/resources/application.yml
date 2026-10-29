@@ -18,6 +18,8 @@ server:
   forward-headers-strategy: framework
 
 springdoc:
+  # Sắp xếp khóa cố định để docs/openapi.yaml xuất lại không bị đổi thứ tự
+  writer-with-order-by-keys: true
   swagger-ui:
     path: /swagger-ui.html
 

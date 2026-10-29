@@ -5,7 +5,9 @@ import com.diagramio.domain.access.ShareRole;
 import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.NotFoundException;
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
 import com.diagramio.domain.diagram.DiagramRepository;
+import com.diagramio.domain.diagram.DiagramType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,8 +51,8 @@ class ShareServiceTest {
         sampleDiagram = new Diagram(
                 diagramId,
                 "Sơ đồ lớp BTL",
-                "UML",
-                "{\"nodes\":[], \"edges\":[]}",
+                DiagramType.UML,
+                DiagramData.fromStorage("{\"nodes\":[], \"edges\":[]}"),
                 1,
                 false,
                 ownerId,

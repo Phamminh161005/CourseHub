@@ -1,6 +1,8 @@
 package com.diagramio.infrastructure.diagram;
 
 import com.diagramio.domain.diagram.Diagram;
+import com.diagramio.domain.diagram.DiagramData;
+import com.diagramio.domain.diagram.DiagramType;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,8 +15,8 @@ public class DiagramMapper {
         return new Diagram(
                 entity.getId(),
                 entity.getTitle(),
-                entity.getDiagramType(),
-                entity.getData(),
+                entity.getDiagramType() == null ? null : DiagramType.valueOf(entity.getDiagramType()),
+                entity.getData() == null ? null : DiagramData.fromStorage(entity.getData()),
                 entity.getVersion(),
                 entity.isPublic(),
                 entity.getOwnerId(),
@@ -30,8 +32,8 @@ public class DiagramMapper {
         DiagramEntity entity = new DiagramEntity();
         entity.setId(diagram.getId());
         entity.setTitle(diagram.getTitle());
-        entity.setDiagramType(diagram.getDiagramType());
-        entity.setData(diagram.getData());
+        entity.setDiagramType(diagram.getDiagramType() == null ? null : diagram.getDiagramType().name());
+        entity.setData(diagram.getData() == null ? null : diagram.getData().json());
         entity.setVersion(diagram.getVersion());
         entity.setPublic(diagram.isPublic());
         entity.setOwnerId(diagram.getOwnerId());
