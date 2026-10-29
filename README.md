@@ -226,12 +226,12 @@ Toàn bộ hệ thống gồm ứng dụng Spring Boot (Java 21), CSDL PostgreSQ
 ---
 
 ### 💡 Nhận xét & Đánh giá hiệu năng Baseline
-1. **Thông lượng tối đa (Maximum Throughput):** Sau khi giải phóng được điểm nghẽn BCrypt login lặp lại, thông lượng hệ thống đạt mốc ngưỡng giới hạn **~747 - 750 RPS** trên cấu hình 4 vCPU của Kaggle.
+1. **Thông lượng tối đa (Maximum Throughput):** Sau khi giải phóng được điểm nghẽn BCrypt login lặp lại, thông lượng hệ thống đạt mốc ngưỡng giới hạn ~747 - 750 RPS trên cấu hình 4 vCPU của Kaggle.
 2. **Độ trễ:** 
-   * Ở mức 10 users: Độ trễ phản hồi cực kỳ mượt mà, p95 chỉ từ **5ms – 8ms**.
-   * Ở mức 50 users: Độ trễ giữ ổn định ở mốc **40ms – 47ms**.
-   * Khi tải tăng gấp đôi lên 100 users: Tổng RPS bắt đầu chạm trần bão hòa (~747 req/s), độ trễ p95 tăng nhẹ lên **100ms – 110ms** nhưng hệ thống vẫn phản hồi cực nhanh dưới 0.15s.
-3. **Độ tin cậy:** Tỉ lệ lỗi ghi nhận **0.0%** tuyệt đối trên toàn bộ 3 mức tải, khẳng định tính toàn vẹn dữ liệu và khả năng quản lý connection pool của Spring Boot + PostgreSQL vận hành rất chuẩn xác.
+   * Ở mức 10 users: Độ trễ phản hồi thấp, p95 chỉ từ 5ms – 8ms.
+   * Ở mức 50 users: Độ trễ giữ ổn định ở mốc 40ms – 47ms.
+   * Ở mức 100 users: Tổng RPS bắt đầu chạm trần bão hòa (~747 req/s), độ trễ p95 tăng lên 100ms – 110ms nhưng hệ thống vẫn phản hồi dưới 0.15s.
+3. **Độ tin cậy:** Tỉ lệ lỗi ghi nhận 0.0% trên toàn bộ 3 mức tải, khẳng định tính toàn vẹn dữ liệu và khả năng quản lý connection pool của Spring Boot + PostgreSQL vận hành rất chính xác.
 
 ## 7. Hướng cải tiến cho pha 2
 
