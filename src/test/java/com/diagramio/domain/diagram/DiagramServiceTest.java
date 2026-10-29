@@ -12,9 +12,10 @@ import static org.mockito.Mockito.when;
 
 import com.diagramio.domain.access.Caller;
 import com.diagramio.domain.access.ShareRole;
+import com.diagramio.domain.exception.ForbiddenException;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
-import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
+import com.diagramio.domain.exception.UnauthorizedException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -118,7 +119,7 @@ class DiagramServiceTest {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
-        assertThrows(UnauthorizedDiagramAccessException.class, () -> service.updateDiagram(
+        assertThrows(ForbiddenException.class, () -> service.updateDiagram(
                 id, "Hacked", "ERD", DiagramService.DEFAULT_DATA, false, Caller.user(UUID.randomUUID()), 1));
 
         verify(repository, never()).save(any(Diagram.class));
@@ -129,7 +130,7 @@ class DiagramServiceTest {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
-        assertThrows(UnauthorizedDiagramAccessException.class, () -> service.updateDiagram(
+        assertThrows(ForbiddenException.class, () -> service.updateDiagram(
                 id, "Updated", "ERD", DiagramService.DEFAULT_DATA, false,
                 Caller.shareToken(id, ShareRole.VIEW), 1));
 
@@ -180,11 +181,12 @@ class DiagramServiceTest {
     // ---- phân quyền xem ----
 
     @Test
-    void getDiagramByIdRejectsAnonymousForPrivateDiagram() {
+    void getDiagramByIdRejectsAnonymousForPrivateDiagramWith401() {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram(id, 1)));
 
-        assertThrows(UnauthorizedDiagramAccessException.class,
+        // Khách (không tài khoản, không link): đăng nhập có thể đổi kết quả nên là 401, không phải 403
+        assertThrows(UnauthorizedException.class,
                 () -> service.getDiagramById(id, Caller.anonymous()));
     }
 
@@ -206,10 +208,10 @@ class DiagramServiceTest {
         Diagram diagram = diagram(id, 1);
         when(repository.findById(id)).thenReturn(java.util.Optional.of(diagram));
 
-        assertThrows(UnauthorizedDiagramAccessException.class,
+        assertThrows(ForbiddenException.class,
                 () -> service.deleteDiagram(id, Caller.user(UUID.randomUUID())));
         // link edit được sửa nhưng không được xóa
-        assertThrows(UnauthorizedDiagramAccessException.class,
+        assertThrows(ForbiddenException.class,
                 () -> service.deleteDiagram(id, Caller.shareToken(id, ShareRole.EDIT)));
 
         verify(repository, never()).deleteById(id);

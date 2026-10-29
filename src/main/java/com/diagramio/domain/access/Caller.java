@@ -45,6 +45,14 @@ public record Caller(UUID userId, UUID sharedDiagramId, ShareRole shareRole) {
         return canEdit(diagram) || (sharesDiagram(diagram) && shareRole != null);
     }
 
+    /**
+     * Có biết người gọi là ai đối với sơ đồ này không: có tài khoản, hoặc cầm link của chính sơ đồ này.
+     * Không có thì bị từ chối là 401 (đăng nhập có thể đổi kết quả), có thì là 403.
+     */
+    public boolean hasIdentityFor(Diagram diagram) {
+        return userId != null || sharesDiagram(diagram);
+    }
+
     private boolean sharesDiagram(Diagram diagram) {
         return sharedDiagramId != null && sharedDiagramId.equals(diagram.getId());
     }

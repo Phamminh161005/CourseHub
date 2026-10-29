@@ -15,8 +15,8 @@ Trong các sơ đồ, ô bo tròn màu xanh lá là điểm bắt đầu hoặc 
 | Mã | Khi nào |
 |---|---|
 | 400 | Dữ liệu gửi lên sai: thiếu trường, sai định dạng, `data` sai cấu trúc, `size` lớn hơn 100 |
-| 401 | Chưa xác thực: không có JWT hoặc token chia sẻ hợp lệ, sai email/mật khẩu, refresh token không dùng được |
-| 403 | Đã biết người gọi là ai nhưng không đủ quyền với sơ đồ |
+| 401 | Chưa xác thực: không có JWT hoặc token chia sẻ hợp lệ, sai email/mật khẩu, refresh token không dùng được; bị từ chối trên một sơ đồ khi không có tài khoản lẫn link của sơ đồ đó |
+| 403 | Đã biết người gọi là ai (có tài khoản, hoặc có link của chính sơ đồ đó) nhưng không đủ quyền với sơ đồ |
 | 404 | Không tìm thấy sơ đồ, phiên bản, link, hoặc token chia sẻ đã bị thu hồi |
 | 409 | Xung đột: version sơ đồ đã thay đổi, email hoặc username đã tồn tại |
 
@@ -32,7 +32,7 @@ Mỗi request đi qua hai filter trước khi tới controller: filter JWT, sau 
 
 - JWT hợp lệ là JWT có chữ ký đúng và chưa hết hạn. "Có token chia sẻ" nghĩa là request có header `X-Share-Token` và token đó vẫn còn trong bảng `diagram_shares`.
 - Endpoint công khai gồm đăng ký, đăng nhập, refresh token, `/health`, `/shares/{token}`, Swagger, `GET /diagrams/public` và `GET /diagrams/{id}`. Với `GET /diagrams/{id}`, người chưa đăng nhập vẫn vào được controller, sau đó service mới quyết định có cho xem hay không.
-- Bước "Đủ quyền, dữ liệu đúng?" là phần kiểm tra trong service: dữ liệu gửi lên có đúng định dạng (400), quyền theo `Caller` (mục 2, không đủ thì 403), sơ đồ có tồn tại (404), version có khớp (409). Các mục sau mô tả chi tiết phần này cho từng luồng.
+- Bước "Đủ quyền, dữ liệu đúng?" là phần kiểm tra trong service: dữ liệu gửi lên có đúng định dạng (400), quyền theo `Caller` qua `DiagramAccess` (mục 2, không đủ thì 403, hoặc 401 nếu người gọi không có tài khoản lẫn link của sơ đồ), sơ đồ có tồn tại (404), version có khớp (409). Các mục sau mô tả chi tiết phần này cho từng luồng.
 - Người đã đăng nhập mà vẫn gửi `X-Share-Token` thì hai thông tin được gộp lại. Nhờ vậy chủ sơ đồ mở link của chính mình vẫn giữ quyền chủ, và người sửa có đăng nhập vẫn được ghi vào `updated_by`.
 - Token chia sẻ được tra trong DB ở mỗi request, nên khi chủ đổi quyền hay thu hồi link thì thay đổi có hiệu lực ngay từ request tiếp theo.
 
@@ -115,4 +115,4 @@ Chia sẻ hoạt động giống Google Docs: chủ sơ đồ tạo link với q
 - `shareUrl` được tạo từ địa chỉ server đang nhận request (localhost, Docker hay máy chủ thật) và trỏ tới `GET /shares/{token}`, vì pha 1 chưa có frontend.
 - Thu hồi xóa hẳn link, nên từ request sau mở link sẽ nhận 404 và header `X-Share-Token` bị bỏ qua.
 - Người dùng link mà không đăng nhập thì `updated_by` và `created_by` để NULL. Nhiều người dùng chung một link thì không phân biệt được ai với ai; việc này để sang pha 2, khi làm cộng tác thời gian thực.
-- Chỉ chủ sơ đồ quản lý được link. Người cầm link edit mà gọi các endpoint `/shares` sẽ nhận 401 hoặc 403.
+- Chỉ chủ sơ đồ quản lý được link. Các endpoint `/shares` cần tài khoản, nên người chỉ cầm link (kể cả link edit) nhận 401; người đăng nhập nhưng không phải chủ nhận 403.

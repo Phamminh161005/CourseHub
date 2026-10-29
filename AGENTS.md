@@ -29,6 +29,7 @@
 - `ArchitectureTest` enforces these rules; keep it green.
 - Authentication is done once in a security filter (JWT or `X-Share-Token`), not repeated in each endpoint.
 - Controllers receive the caller as a method parameter, resolved by `CallerArgumentResolver`: `Caller caller` for diagram, version and public endpoints (anonymous when there is no login or link), or `@CurrentUser UUID userId` for endpoints that need an account (401 otherwise). Never read `Authentication` or use `@AuthenticationPrincipal` in a controller.
+- Services check diagram permissions only through `DiagramAccess.require(diagramId, caller, Permission)` (`VIEW`, `VIEW_HISTORY`, `EDIT`, `MANAGE`): 404 if missing, 401 if the caller has neither an account nor a link to that diagram, 403 otherwise. Do not write `caller.canX(...)` checks or throw access exceptions by hand in services.
 
 ## Database Migrations
 

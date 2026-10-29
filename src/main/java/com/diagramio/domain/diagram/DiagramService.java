@@ -1,10 +1,10 @@
 package com.diagramio.domain.diagram;
 
 import com.diagramio.domain.access.Caller;
-import com.diagramio.domain.exception.DiagramNotFoundException;
+import com.diagramio.domain.access.DiagramAccess;
+import com.diagramio.domain.access.Permission;
 import com.diagramio.domain.exception.InvalidInputException;
 import com.diagramio.domain.exception.OptimisticLockConflictException;
-import com.diagramio.domain.exception.UnauthorizedDiagramAccessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,9 +24,11 @@ public class DiagramService {
     private static final String ERD = "ERD";
 
     private final DiagramRepository repository;
+    private final DiagramAccess access;
 
     public DiagramService(DiagramRepository repository) {
         this.repository = repository;
+        this.access = new DiagramAccess(repository);
     }
 
     public Diagram createDiagram(Diagram diagram) {
@@ -59,10 +61,7 @@ public class DiagramService {
         if (id == null) {
             throw new InvalidInputException("Diagram id is required");
         }
-        Diagram current = findRequired(id);
-        if (!caller.canEdit(current)) {
-            throw new UnauthorizedDiagramAccessException("You do not have permission to edit this diagram");
-        }
+        Diagram current = access.require(id, caller, Permission.EDIT);
         checkVersion(id, requestVersion, current.getVersion());
         validateDiagramType(diagramType);
         validateJson(data);
@@ -79,19 +78,12 @@ public class DiagramService {
     }
 
     public void deleteDiagram(UUID id, Caller caller) {
-        Diagram diagram = findRequired(id);
-        if (!caller.canManage(diagram)) {
-            throw new UnauthorizedDiagramAccessException("Only the diagram owner can delete it");
-        }
+        access.require(id, caller, Permission.MANAGE);
         repository.deleteById(id);
     }
 
     public Diagram getDiagramById(UUID id, Caller caller) {
-        Diagram diagram = findRequired(id);
-        if (!caller.canView(diagram)) {
-            throw new UnauthorizedDiagramAccessException("You do not have access to this diagram");
-        }
-        return diagram;
+        return access.require(id, caller, Permission.VIEW);
     }
 
     public List<Diagram> getDiagramsByOwner(UUID ownerId, String diagramType, String title,
@@ -117,11 +109,6 @@ public class DiagramService {
 
     public long countPublicDiagrams() {
         return repository.countPublicDiagrams();
-    }
-
-    private Diagram findRequired(UUID id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found: " + id));
     }
 
     private void checkVersion(UUID id, Integer requestedVersion, Integer currentVersion) {

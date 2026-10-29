@@ -114,8 +114,8 @@ Mọi lỗi trả cùng một khung JSON:
 | Mã | Khi nào |
 |---|---|
 | 400 | Thiếu trường, sai định dạng, `title` dài hơn 255 ký tự, `data` sai cấu trúc hoặc quá 2 MB, `size` lớn hơn 100, mật khẩu cũ sai |
-| 401 | Chưa xác thực, token sai hoặc hết hạn, sai email hoặc mật khẩu; chỉ cầm `X-Share-Token` khi gọi endpoint cần tài khoản (`/users/me`, đăng xuất, sơ đồ của tôi, quản lý link) |
-| 403 | Đã biết người gọi nhưng không đủ quyền với sơ đồ |
+| 401 | Chưa xác thực, token sai hoặc hết hạn, sai email hoặc mật khẩu; chỉ cầm `X-Share-Token` khi gọi endpoint cần tài khoản (`/users/me`, đăng xuất, sơ đồ của tôi, quản lý link); bị từ chối trên một sơ đồ khi không có tài khoản lẫn link của sơ đồ đó (ví dụ khách mở sơ đồ riêng tư) |
+| 403 | Đã biết người gọi (có tài khoản, hoặc có link của chính sơ đồ đó) nhưng không đủ quyền với sơ đồ |
 | 404 | Không tìm thấy sơ đồ, phiên bản, link, đường dẫn; token chia sẻ đã bị thu hồi |
 | 405 | Sai method HTTP (header `Allow` liệt kê method hợp lệ) |
 | 409 | Lệch `version` khi cập nhật hoặc lưu phiên bản; email hay username đã tồn tại |
